@@ -1,0 +1,10 @@
+# Configuration de déploiement Netlify pour l'application Next.js Vetabet.
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Runtime officiel Next.js (SSR, routes API, middleware/proxy).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

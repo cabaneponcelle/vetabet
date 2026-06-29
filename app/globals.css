@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* ── Thème sobre et professionnel (Planning Assistovet) ───────────────────── */
+:root {
+  --background: #f5f7fa; /* fond général gris très clair */
+  --foreground: #1e293b; /* texte slate-800 */
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+
+  --primary: #2563eb; /* bleu */
+  --primary-foreground: #ffffff;
+  --sidebar: #0f172a; /* slate-900 */
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-active: #1e293b;
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* FullCalendar : harmonise avec le thème */
+.fc {
+  font-size: 0.85rem;
+}
+.fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.fc .fc-event {
+  cursor: pointer;
+  padding: 1px 3px;
+  /* liséré gauche épais = salle ; fond = activité */
+  border-width: 1px 1px 1px 4px;
+  border-style: solid;
+}
+.fc .fc-button {
+  background: var(--primary);
+  border-color: var(--primary);
+  text-transform: capitalize;
+}
+.fc .fc-button:hover {
+  opacity: 0.9;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}

@@ -1,0 +1,193 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  Planning Assistovet — schéma de base de données (Prisma / PostgreSQL)
+//  Source de vérité du modèle de données de l'application.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+  // "native" = dev local ; cibles Linux pour le runtime serverless Netlify/Lambda.
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Rôles utilisateurs : la RH (ADMIN) gère tout, le vétérinaire (WORKER) consulte.
+enum Role {
+  ADMIN
+  WORKER
+}
+
+// État d'un créneau : BROUILLON (visible RH seule) ou PUBLIE (visible travailleurs).
+enum ItemStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// Catégories de problème pour une réclamation.
+enum ComplaintType {
+  INDISPO // Je ne suis pas disponible
+  MAUVAISE_SALLE // Mauvaise salle
+  HORAIRE // Horaire incorrect
+  CONFLIT // Conflit avec un autre créneau
+  AUTRE // Autre problème
+}
+
+// Cycle de vie d'une réclamation côté RH.
+enum ComplaintStatus {
+  NOUVELLE
+  EN_COURS
+  RESOLUE
+  REFUSEE
+}
+
+// Cycle de vie d'une demande de congé.
+enum LeaveStatus {
+  EN_ATTENTE
+  APPROUVE
+  REFUSE
+}
+
+// Compte de connexion (RH ou travailleur).
+model User {
+  id           String   @id @default(cuid())
+  nom          String
+  prenom       String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(WORKER)
+  actif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  worker Worker? // un compte travailleur est lié à une fiche Worker
+}
+
+// Fiche métier d'un vétérinaire / travailleur.
+model Worker {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fonction  String?
+  telephone String?
+  actif     Boolean @default(true)
+
+  availabilities Availability[]
+  scheduleItems  ScheduleItem[]
+  complaints     Complaint[]
+  leaveRequests  LeaveRequest[]
+}
+
+// Disponibilité récurrente hebdomadaire d'un travailleur (sert au contrôle « hors dispo »).
+model Availability {
+  id          String @id @default(cuid())
+  workerId    String
+  worker      Worker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  jourSemaine Int // 0 = lundi … 6 = dimanche
+  heureDebut  String // format "HH:mm"
+  heureFin    String // format "HH:mm"
+
+  @@index([workerId])
+}
+
+// Salle de la clinique (opération, consultation, imagerie, …).
+model Room {
+  id          String  @id @default(cuid())
+  nom         String
+  type        String?
+  description String?
+  couleur     String  @default("#3b82f6")
+  actif       Boolean @default(true)
+
+  scheduleItems ScheduleItem[]
+}
+
+// Type d'activité (légende couleurs reprise de l'Excel : consult, urgences, hospi, …).
+model Activity {
+  id        String  @id @default(cuid())
+  nom       String
+  categorie String?
+  couleur   String  @default("#3b82f6")
+
+  scheduleItems ScheduleItem[]
+}
+
+// Créneau du planning : la brique centrale.
+model ScheduleItem {
+  id          String     @id @default(cuid())
+  titre       String?
+  description String?
+  date        DateTime   @db.Date
+  heureDebut  String // "HH:mm"
+  heureFin    String // "HH:mm"
+  status      ItemStatus @default(DRAFT)
+
+  // Pour un créneau PUBLISHED : id du créneau DRAFT dont il est la copie publiée.
+  // Permet de mettre à jour (et non recréer) les copies publiées à chaque
+  // publication, ce qui préserve les liens de réclamations.
+  sourceId String?
+
+  workerId String?
+  worker   Worker? @relation(fields: [workerId], references: [id], onDelete: SetNull)
+
+  roomId String?
+  room   Room?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complaints Complaint[]
+
+  @@index([date])
+  @@index([workerId])
+  @@index([roomId])
+  @@index([status])
+  @@index([sourceId])
+}
+
+// Réclamation déposée par un travailleur sur un créneau.
+model Complaint {
+  id             String        @id @default(cuid())
+  scheduleItemId String?
+  scheduleItem   ScheduleItem? @relation(fields: [scheduleItemId], references: [id], onDelete: SetNull)
+  workerId       String
+  worker         Worker        @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  type        ComplaintType
+  commentaire String?
+  status      ComplaintStatus @default(NOUVELLE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status])
+  @@index([workerId])
+}
+
+// Demande de congé d'un travailleur (du… au…), validée par la RH.
+model LeaveRequest {
+  id        String      @id @default(cuid())
+  workerId  String
+  worker    Worker      @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  dateDebut DateTime    @db.Date
+  dateFin   DateTime    @db.Date
+  motif     String?
+  status    LeaveStatus @default(EN_ATTENTE)
+  decidedBy String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([workerId])
+  @@index([status])
+}
+
+// Paramètres applicatifs simples (clé/valeur) : email RH, droits travailleurs, …
+model Setting {
+  id     String @id @default(cuid())
+  cle    String @unique
+  valeur String
+}

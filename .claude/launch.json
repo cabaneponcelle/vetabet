@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "assistovet",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "C:/Users/timta/OneDrive - Haute Ecole de Namur-Liege-Luxembourg/reste/Documents/V2clinique/planning-assistovet",
+      "port": 3000
+    }
+  ]
+}
