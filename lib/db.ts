@@ -5,11 +5,22 @@ import { PrismaClient } from "@prisma/client";
 // variable injectée automatiquement par Netlify DB (NETLIFY_DATABASE_URL). Pour
 // la connexion poolée (PgBouncer), Prisma a besoin de `pgbouncer=true`.
 function resolveDbUrl(): string | undefined {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const netlify = process.env.NETLIFY_DATABASE_URL;
-  if (!netlify) return undefined; // -> Prisma retombe sur env("DATABASE_URL") du schéma
-  if (netlify.includes("pgbouncer=")) return netlify;
-  return netlify + (netlify.includes("?") ? "&" : "?") + "pgbouncer=true";
+  const fromEnv = process.env.DATABASE_URL ?? process.env.NETLIFY_DATABASE_URL;
+  if (!fromEnv) return undefined; // -> Prisma retombe sur env("DATABASE_URL") du schéma
+
+  const usingNetlify = !process.env.DATABASE_URL;
+  let url = fromEnv;
+  const ensure = (k: string, v: string) => {
+    if (!url.includes(`${k}=`)) url += `${url.includes("?") ? "&" : "?"}${k}=${v}`;
+  };
+
+  // Pooler Netlify/Neon : Prisma a besoin de pgbouncer=true.
+  if (usingNetlify) ensure("pgbouncer", "true");
+  // Tolérance au réveil de Neon (veille de l'offre gratuite) : la 1re requête
+  // après inactivité doit attendre le démarrage du compute.
+  ensure("connect_timeout", "30");
+  ensure("pool_timeout", "30");
+  return url;
 }
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
