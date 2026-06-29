@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, CopyPlus, DoorOpen } from "lucide-react";
+import { Plus, CopyPlus, DoorOpen, CalendarDays, Table2, ChevronLeft, ChevronRight } from "lucide-react";
 import { PlanningCalendar } from "@/components/planning-calendar";
+import { PlanningGrid } from "@/components/planning-grid";
 import { ScheduleItemDialog, type DialogDefaults } from "@/components/schedule-item-dialog";
 import { ConflictPanel } from "@/components/admin/conflict-panel";
 import { PublishButton } from "@/components/admin/publish-button";
@@ -23,6 +24,18 @@ function mondayOf(dateStr: string): string {
   const dow = (new Date(ms).getUTCDay() + 6) % 7; // 0 = lundi
   return new Date(ms - dow * 86_400_000).toISOString().slice(0, 10);
 }
+function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + n * 86_400_000).toISOString().slice(0, 10);
+}
+function weekLabel(monday: string): string {
+  const end = addDaysStr(monday, 6);
+  const f = (s: string) => {
+    const [, m, d] = s.split("-");
+    return `${d}/${m}`;
+  };
+  return `Semaine du ${f(monday)} au ${f(end)}`;
+}
 
 export function PlanningClient({ reference }: { reference: ReferenceData }) {
   const [items, setItems] = useState<SerializedItem[]>([]);
@@ -33,6 +46,7 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
   const [workerId, setWorkerId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [viewMonday, setViewMonday] = useState<string>(mondayOf(new Date().toISOString().slice(0, 10)));
+  const [view, setView] = useState<"calendrier" | "grille">("calendrier");
   const [dupOpen, setDupOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -95,6 +109,20 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
 
         {/* Filtres + actions */}
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded-md border border-border">
+            <button
+              onClick={() => setView("calendrier")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "calendrier" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+            >
+              <CalendarDays className="h-4 w-4" /> Calendrier
+            </button>
+            <button
+              onClick={() => setView("grille")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "grille" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+            >
+              <Table2 className="h-4 w-4" /> Grille
+            </button>
+          </div>
           <Select className="w-44" value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
             <option value="">Tous les travailleurs</option>
             {reference.workers.map((w) => (
@@ -121,12 +149,36 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
 
         <Card>
           <CardContent>
-            <PlanningCalendar
-              items={items}
-              onSelectSlot={openNew}
-              onEventClick={openEdit}
-              onDatesSet={(s) => setViewMonday(mondayOf(s))}
-            />
+            {view === "calendrier" ? (
+              <PlanningCalendar
+                items={items}
+                onSelectSlot={openNew}
+                onEventClick={openEdit}
+                onDatesSet={(s) => setViewMonday(mondayOf(s))}
+              />
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, -7))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setViewMonday(mondayOf(new Date().toISOString().slice(0, 10)))}
+                    >
+                      Aujourd&apos;hui
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, 7))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-sm font-semibold">{weekLabel(viewMonday)}</div>
+                </div>
+                <PlanningGrid items={items} weekMonday={viewMonday} onEventClick={openEdit} />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
