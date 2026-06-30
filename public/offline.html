@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vetabet — Hors ligne</title>
+    <style>
+      body { font-family: system-ui, -apple-system, sans-serif; background: #f5f7fa; color: #1e293b; display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; text-align: center; padding: 24px; }
+      .box { max-width: 360px; }
+      .icon { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 16px; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28px; font-weight: 700; }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      p { color: #64748b; font-size: 14px; }
+      button { margin-top: 16px; background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="icon">V</div>
+      <h1>Vous êtes hors ligne</h1>
+      <p>Impossible de charger le planning sans connexion. Reconnectez-vous à Internet puis réessayez.</p>
+      <button onclick="location.reload()">Réessayer</button>
+    </div>
+  </body>
+</html>

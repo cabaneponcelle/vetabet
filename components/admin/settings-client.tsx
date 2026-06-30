@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordCard } from "@/components/change-password-card";
+import { BackupCard } from "@/components/admin/backup-card";
 import { dateFr } from "@/lib/utils";
 
 export function SettingsClient() {
@@ -100,6 +101,7 @@ export function SettingsClient() {
       </div>
 
       <ChangePasswordCard />
+      <BackupCard />
     </div>
   );
 }
