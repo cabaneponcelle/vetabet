@@ -26,3 +26,17 @@ export function dateLongFr(dateStr: string): string {
   const jour = JOURS[(js + 6) % 7];
   return `${jour} ${dateFr(dateStr)}`;
 }
+
+// Lundi de la semaine contenant la date donnée.
+export function mondayOf(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const ms = Date.UTC(y, m - 1, d);
+  const dow = (new Date(ms).getUTCDay() + 6) % 7; // 0 = lundi
+  return new Date(ms - dow * 86_400_000).toISOString().slice(0, 10);
+}
+
+// Décale une date de n jours.
+export function addDaysStr(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + n * 86_400_000).toISOString().slice(0, 10);
+}

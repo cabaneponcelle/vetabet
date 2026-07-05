@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, CopyPlus, DoorOpen, CalendarDays, Table2, ChevronLeft, ChevronRight } from "lucide-react";
 import { PlanningCalendar } from "@/components/planning-calendar";
 import { PlanningGrid } from "@/components/planning-grid";
+import { ActivityLegend } from "@/components/activity-legend";
 import { ScheduleItemDialog, type DialogDefaults } from "@/components/schedule-item-dialog";
 import { ConflictPanel } from "@/components/admin/conflict-panel";
 import { PublishButton } from "@/components/admin/publish-button";
@@ -45,8 +46,10 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
   const [defaults, setDefaults] = useState<DialogDefaults | undefined>();
   const [workerId, setWorkerId] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [activityId, setActivityId] = useState("");
   const [viewMonday, setViewMonday] = useState<string>(mondayOf(new Date().toISOString().slice(0, 10)));
-  const [view, setView] = useState<"calendrier" | "grille">("calendrier");
+  const [view, setView] = useState<"calendrier" | "grille">("grille");
+  const [lastPub, setLastPub] = useState<string | null>(null);
   const [dupOpen, setDupOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -54,17 +57,26 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
     const params = new URLSearchParams({ status: "DRAFT" });
     if (workerId) params.set("workerId", workerId);
     if (roomId) params.set("roomId", roomId);
-    const [itemsRes, confRes] = await Promise.all([
+    const [itemsRes, confRes, settingsRes] = await Promise.all([
       fetch(`/api/schedule-items?${params}`),
       fetch("/api/conflicts"),
+      fetch("/api/settings"),
     ]);
     if (itemsRes.ok) setItems(await itemsRes.json());
     if (confRes.ok) setConflicts(await confRes.json());
+    if (settingsRes.ok) {
+      const s = await settingsRes.json();
+      setLastPub(s.derniere_publication ?? null);
+    }
   }, [workerId, roomId]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Filtre par activité (côté client) + détection de modifications non publiées.
+  const shownItems = activityId ? items.filter((i) => i.activityId === activityId) : items;
+  const hasUnpublished = items.some((i) => !lastPub || i.updatedAt > lastPub);
 
   function openNew(d?: DialogDefaults) {
     setEditing(null);
@@ -139,6 +151,14 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
               </option>
             ))}
           </Select>
+          <Select className="w-44" value={activityId} onChange={(e) => setActivityId(e.target.value)}>
+            <option value="">Toutes les activités</option>
+            {reference.activities.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </Select>
           <Button variant="outline" onClick={() => setDupOpen(true)}>
             <CopyPlus className="h-4 w-4" /> Dupliquer la semaine
           </Button>
@@ -147,11 +167,13 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
           </Button>
         </div>
 
+        <ActivityLegend activities={reference.activities} />
+
         <Card>
           <CardContent>
             {view === "calendrier" ? (
               <PlanningCalendar
-                items={items}
+                items={shownItems}
                 onSelectSlot={openNew}
                 onEventClick={openEdit}
                 onDatesSet={(s) => setViewMonday(mondayOf(s))}
@@ -176,7 +198,7 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
                   </div>
                   <div className="text-sm font-semibold">{weekLabel(viewMonday)}</div>
                 </div>
-                <PlanningGrid items={items} weekMonday={viewMonday} onEventClick={openEdit} />
+                <PlanningGrid items={shownItems} weekMonday={viewMonday} onEventClick={openEdit} />
               </div>
             )}
           </CardContent>
@@ -184,7 +206,12 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
       </div>
 
       <div className="space-y-4">
-        <PublishButton conflicts={conflicts} onPublished={refresh} />
+        <PublishButton
+          conflicts={conflicts}
+          onPublished={refresh}
+          lastPublication={lastPub}
+          hasUnpublished={hasUnpublished}
+        />
         <ConflictPanel conflicts={conflicts} compact />
       </div>
 

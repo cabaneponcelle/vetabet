@@ -33,6 +33,7 @@ export interface SerializedItem {
   activityId: string | null;
   activityNom: string | null;
   activityCouleur: string | null;
+  updatedAt: string; // ISO — sert à détecter les modifications non publiées
 }
 
 export function dateStr(d: Date): string {
@@ -61,6 +62,7 @@ export function serializeItem(it: ItemWithRelations): SerializedItem {
     activityId: it.activityId,
     activityNom: it.activity?.nom ?? null,
     activityCouleur: it.activity?.couleur ?? null,
+    updatedAt: it.updatedAt.toISOString(),
   };
 }
 

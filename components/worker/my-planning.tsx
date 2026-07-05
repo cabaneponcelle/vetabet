@@ -112,8 +112,13 @@ export function MyPlanning() {
             <div className="space-y-4">
               {groupes.map(([date, jourItems]) => (
                 <div key={date}>
-                  <div className="mb-1.5 text-sm font-semibold capitalize text-muted-foreground">
+                  <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold capitalize text-muted-foreground">
                     {dateLongFr(date)}
+                    {date === todayStr() && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium normal-case text-primary">
+                        Aujourd&apos;hui
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-2">
                     {jourItems.map((it) => (

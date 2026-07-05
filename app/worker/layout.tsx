@@ -8,7 +8,8 @@ export default async function WorkerLayout({ children }: { children: React.React
   return (
     <div className="min-h-full">
       <WorkerNav userName={name} />
-      <main className="mx-auto max-w-5xl p-4 lg:p-6">{children}</main>
+      {/* pb-24 : espace pour la barre d'onglets mobile fixée en bas */}
+      <main className="mx-auto max-w-5xl p-4 pb-24 sm:pb-6 lg:p-6">{children}</main>
     </div>
   );
 }

@@ -62,31 +62,41 @@ export function PlanningGrid({
     );
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+
   return (
-    <div className="overflow-x-auto">
+    // overflow-auto + hauteur max : permet aux en-têtes (haut et gauche) de
+    // rester visibles pendant le défilement de la grille.
+    <div className="max-h-[75vh] overflow-auto rounded-md border border-border">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
-            <th className="sticky left-0 z-10 border border-border bg-muted px-2 py-1.5 text-left font-semibold">
+            <th className="sticky left-0 top-0 z-30 border border-border bg-muted px-2 py-1.5 text-left font-semibold">
               Vétérinaire
             </th>
             {days.map((d, i) => (
-              <th key={d} className="min-w-[150px] border border-border bg-muted px-2 py-1.5 text-center font-semibold">
+              <th
+                key={d}
+                className={`sticky top-0 z-20 min-w-[150px] border border-border px-2 py-1.5 text-center font-semibold ${
+                  d === today ? "bg-primary/15 text-primary" : "bg-muted"
+                }`}
+              >
                 {JOURS[i]} {ddmm(d)}
+                {d === today && <span className="block text-[10px] font-normal">Aujourd&apos;hui</span>}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {workers.map((w) => (
-            <tr key={w.id}>
+            <tr key={w.id} className="hover:bg-muted/30">
               <th className="sticky left-0 z-10 whitespace-nowrap border border-border bg-card px-2 py-1 text-left font-medium">
                 {w.nom}
               </th>
               {days.map((d) => {
                 const cell = byCell.get(`${w.id}|${d}`) ?? [];
                 return (
-                  <td key={d} className="border border-border align-top p-1">
+                  <td key={d} className={`border border-border align-top p-1 ${d === today ? "bg-primary/5" : ""}`}>
                     <div className="flex flex-col gap-1">
                       {cell.map((it) => (
                         <button

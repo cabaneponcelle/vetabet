@@ -6,12 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { hasBlocking, type Conflict } from "@/lib/conflicts";
 
+function pubFr(iso: string): string {
+  const [date, time] = iso.split("T");
+  const [y, m, d] = date.split("-");
+  return `${d}/${m}/${y} à ${time?.slice(0, 5) ?? ""}`;
+}
+
 export function PublishButton({
   conflicts,
   onPublished,
+  lastPublication,
+  hasUnpublished,
 }: {
   conflicts: Conflict[];
   onPublished?: () => void;
+  lastPublication?: string | null;
+  hasUnpublished?: boolean;
 }) {
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -53,9 +63,19 @@ export function PublishButton({
             Le planning est cohérent : vous pouvez le rendre visible aux travailleurs.
           </p>
         )}
+        {hasUnpublished && !bloque && (
+          <p className="rounded-md bg-warning/10 px-2 py-1.5 text-xs font-medium text-warning">
+            ⚠ Des modifications ne sont pas encore publiées — les travailleurs voient
+            l&apos;ancienne version.
+          </p>
+        )}
         <Button onClick={publish} disabled={bloque || publishing} className="w-full">
           {publishing ? "Publication…" : "Publier le planning"}
         </Button>
+        <p className="text-xs text-muted-foreground">
+          Dernière publication :{" "}
+          {lastPublication ? pubFr(lastPublication) : "jamais"}
+        </p>
         {message && <p className="text-xs">{message}</p>}
       </CardContent>
     </Card>

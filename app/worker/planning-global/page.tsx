@@ -8,7 +8,7 @@ export default async function PlanningGlobalPage() {
   return (
     <WorkerPlanning
       scope="global"
-      reference={{ workers: ref.workers, rooms: ref.rooms }}
+      reference={{ workers: ref.workers, rooms: ref.rooms, activities: ref.activities }}
     />
   );
 }
