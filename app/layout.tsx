@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vetabet — Planning",
+  title: "Vetelio — Planning",
   description: "Gestion d'emploi du temps — clinique vétérinaire",
-  applicationName: "Vetabet",
-  appleWebApp: { capable: true, title: "Vetabet", statusBarStyle: "default" },
+  applicationName: "Vetelio",
+  appleWebApp: { capable: true, title: "Vetelio", statusBarStyle: "default" },
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
 };
 

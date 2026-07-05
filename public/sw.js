@@ -1,7 +1,7 @@
-// Service worker Vetabet (PWA) — prudent : ne met JAMAIS l'API en cache (données
+// Service worker Vetelio (PWA) — prudent : ne met JAMAIS l'API en cache (données
 // toujours fraîches), pages en network-first avec repli hors-ligne, assets Next
 // immuables en cache-first.
-const CACHE = "vetabet-v1";
+const CACHE = "vetelio-v1";
 const PRECACHE = ["/offline.html", "/icon.svg"];
 
 self.addEventListener("install", (event) => {

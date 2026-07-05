@@ -1,4 +1,4 @@
-# Configuration de déploiement Netlify pour l'application Next.js Vetabet.
+# Configuration de déploiement Netlify pour l'application Next.js Vetelio.
 [build]
   command = "npm run build"
 

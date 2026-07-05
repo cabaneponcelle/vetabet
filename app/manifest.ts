@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // Manifeste PWA — servi automatiquement par Next.js sur /manifest.webmanifest.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Vetabet — Planning",
-    short_name: "Vetabet",
+    name: "Vetelio — Planning",
+    short_name: "Vetelio",
     description: "Planning de la clinique vétérinaire",
     start_url: "/",
     display: "standalone",

@@ -36,7 +36,7 @@ export default function LoginPage() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <CalendarDays className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-semibold">Vetabet</h1>
+          <h1 className="text-xl font-semibold">Vetelio</h1>
           <p className="text-sm text-muted-foreground">Connexion à votre espace</p>
         </div>
 

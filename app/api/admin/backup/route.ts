@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(JSON.stringify(backup, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="vetabet-backup-${date}.json"`,
+      "Content-Disposition": `attachment; filename="vetelio-backup-${date}.json"`,
       "Cache-Control": "no-store",
     },
   });
