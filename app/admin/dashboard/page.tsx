@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { CalendarDays, Users, DoorOpen, MessageSquare, type LucideIcon } from "lucide-react";
+import { CalendarDays, Users, DoorOpen, MessageSquare, Moon, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { loadConflicts } from "@/lib/schedule";
+import { loadGardesReprenables } from "@/lib/gardes";
 import { ConflictPanel } from "@/components/admin/conflict-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,7 @@ function StatCard({ icon: Icon, label, value, href }: { icon: LucideIcon; label:
 }
 
 export default async function DashboardPage() {
-  const [draftCount, publishedCount, workersCount, roomsCount, complaints, conflicts] =
+  const [draftCount, publishedCount, workersCount, roomsCount, complaints, conflicts, gardes] =
     await Promise.all([
       prisma.scheduleItem.count({ where: { status: "DRAFT" } }),
       prisma.scheduleItem.count({ where: { status: "PUBLISHED" } }),
@@ -48,6 +49,7 @@ export default async function DashboardPage() {
         take: 6,
       }),
       loadConflicts("DRAFT"),
+      loadGardesReprenables(),
     ]);
 
   return (
@@ -96,6 +98,47 @@ export default async function DashboardPage() {
                   </Badge>
                 </div>
               ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Moon className="h-4 w-4 text-primary" />
+              Gardes à reprendre
+            </CardTitle>
+            <Badge variant={gardes.length > 0 ? "warning" : "success"}>{gardes.length}</Badge>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {gardes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Aucune garde orpheline — personne en congé n&apos;a de créneau à couvrir.
+              </p>
+            ) : (
+              gardes.slice(0, 6).map((g) => (
+                <div
+                  key={g.id}
+                  className="flex items-center justify-between rounded-md border border-border p-2 text-sm"
+                >
+                  <div>
+                    <div className="font-medium">
+                      {dateFr(g.date)} · {g.heureDebut}–{g.heureFin} ·{" "}
+                      {g.activityNom ?? g.titre ?? "Créneau"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {g.workerNom} (en congé) — proposée aux vétérinaires
+                    </div>
+                  </div>
+                  <span
+                    className="ml-2 inline-block h-6 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: g.activityCouleur ?? "#94a3b8" }}
+                  />
+                </div>
+              ))
+            )}
+            {gardes.length > 6 && (
+              <p className="text-xs text-muted-foreground">…et {gardes.length - 6} de plus.</p>
             )}
           </CardContent>
         </Card>
