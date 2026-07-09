@@ -17,7 +17,7 @@ export default async () => {
   const json = await res.text();
 
   const store = getStore("backups");
-  const key = `vetelio-${new Date().toISOString().slice(0, 10)}.json`;
+  const key = `deiereklinik-${new Date().toISOString().slice(0, 10)}.json`;
   await store.set(key, json);
 
   return new Response(`Sauvegarde enregistrée : ${key}`);

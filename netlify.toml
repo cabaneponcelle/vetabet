@@ -1,4 +1,4 @@
-# Configuration de déploiement Netlify pour l'application Next.js Vetelio.
+# Configuration de déploiement Netlify pour l'application Next.js Déiereklinik Planning.
 [build]
   command = "npm run build"
 

@@ -43,8 +43,8 @@ export function Sidebar({ userName }: { userName: string }) {
           <CalendarDays className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <div className="text-sm font-semibold text-white">Vetelio</div>
-          <div className="text-[11px] text-sidebar-foreground">Espace RH</div>
+          <div className="text-sm font-semibold text-white">Déiereklinik</div>
+          <div className="text-[11px] text-sidebar-foreground">Planning · Espace RH</div>
         </div>
       </div>
 
@@ -89,7 +89,7 @@ export function Sidebar({ userName }: { userName: string }) {
         <button onClick={() => setOpen(true)} aria-label="Menu">
           <Menu className="h-5 w-5" />
         </button>
-        <span className="font-semibold">Vetelio — RH</span>
+        <span className="font-semibold">Déiereklinik — RH</span>
       </div>
 
       {/* Sidebar fixe (desktop) */}

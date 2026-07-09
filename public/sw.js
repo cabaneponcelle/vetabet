@@ -1,7 +1,7 @@
-// Service worker Vetelio (PWA) — prudent : ne met JAMAIS l'API en cache (données
-// toujours fraîches), pages en network-first avec repli hors-ligne, assets Next
-// immuables en cache-first.
-const CACHE = "vetelio-v1";
+// Service worker Déiereklinik Planning (PWA) — prudent : ne met JAMAIS l'API en
+// cache (données toujours fraîches), pages en network-first avec repli
+// hors-ligne, assets Next immuables en cache-first.
+const CACHE = "deiereklinik-v1";
 const PRECACHE = ["/offline.html", "/icon.svg"];
 
 self.addEventListener("install", (event) => {

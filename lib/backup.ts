@@ -27,7 +27,7 @@ export async function buildBackup() {
   ]);
 
   return {
-    application: "vetelio",
+    application: "deiereklinik-planning",
     version: 1,
     exportedAt: new Date().toISOString(),
     data: {

@@ -26,7 +26,7 @@ export function WorkerNav({ userName }: { userName: string }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <CalendarDays className="h-4 w-4" />
             </div>
-            <span>Vetelio</span>
+            <span>Déiereklinik Planning</span>
           </div>
           <nav className="hidden flex-1 flex-wrap gap-1 sm:flex">
             {NAV.map((n) => {

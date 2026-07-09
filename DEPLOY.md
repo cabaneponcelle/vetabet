@@ -1,4 +1,4 @@
-# Déploiement — Vetelio sur Netlify
+# Déploiement — Déiereklinik Planning sur Netlify
 
 ## Recommandation
 
