@@ -17,7 +17,10 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function ConflictPanel({ conflicts, compact }: { conflicts: Conflict[]; compact?: boolean }) {
   const bloquants = conflicts.filter((c) => c.severite === "BLOQUANT");
-  const avert = conflicts.filter((c) => c.severite === "AVERTISSEMENT");
+  // Les avertissements mis de côté par la RH ne s'affichent plus ici : ils
+  // restent consultables (et réactivables) dans la rubrique Incohérences.
+  const avert = conflicts.filter((c) => c.severite === "AVERTISSEMENT" && !c.ignored);
+  const ignores = conflicts.filter((c) => c.severite === "AVERTISSEMENT" && c.ignored).length;
 
   return (
     <Card>
@@ -32,7 +35,7 @@ export function ConflictPanel({ conflicts, compact }: { conflicts: Conflict[]; c
         </div>
       </CardHeader>
       <CardContent className={cn("space-y-2", compact ? "max-h-72 overflow-y-auto" : "max-h-[60vh] overflow-y-auto")}>
-        {conflicts.length === 0 ? (
+        {bloquants.length + avert.length === 0 ? (
           <div className="flex items-center gap-2 text-sm text-success">
             <CheckCircle2 className="h-4 w-4" /> Aucune incohérence. Le planning est prêt à être publié.
           </div>
@@ -58,6 +61,11 @@ export function ConflictPanel({ conflicts, compact }: { conflicts: Conflict[]; c
               <p className="text-muted-foreground">{c.message}</p>
             </div>
           ))
+        )}
+        {ignores > 0 && (
+          <p className="pt-1 text-xs text-muted-foreground">
+            {ignores} avertissement(s) ignoré(s) — visibles dans la rubrique Incohérences.
+          </p>
         )}
       </CardContent>
     </Card>

@@ -55,6 +55,16 @@ export interface Conflict {
   travailleur?: string | null;
   salle?: string | null;
   itemIds: string[]; // créneaux impliqués (1 ou 2)
+  ignored?: boolean; // avertissement masqué à la demande de la RH
+}
+
+/**
+ * Identifiant stable d'une incohérence : sert à mémoriser les avertissements que
+ * la RH a choisi d'ignorer. Si le créneau change de date ou d'horaire, la clé
+ * change et l'avertissement réapparaît — c'est voulu.
+ */
+export function conflictKey(c: Pick<Conflict, "type" | "date" | "heure" | "itemIds">): string {
+  return [c.type, c.date, c.heure, [...c.itemIds].sort().join("+")].join("|");
 }
 
 // "HH:mm" -> nombre de minutes depuis minuit. Renvoie NaN si invalide.

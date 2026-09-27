@@ -9,10 +9,12 @@ import {
   ChevronRight,
   CopyPlus,
   Eraser,
+  EyeOff,
   PenLine,
   Plus,
 } from "lucide-react";
 import { ScheduleItemDialog, type DialogDefaults } from "@/components/schedule-item-dialog";
+import { WeekPicker } from "@/components/admin/week-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -20,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { addDaysStr, dateFr, mondayOf } from "@/lib/utils";
-import type { Conflict } from "@/lib/conflicts";
+import { conflictKey, type Conflict } from "@/lib/conflicts";
 import type { ReferenceData } from "@/lib/reference";
 import type { SerializedItem } from "@/lib/schedule";
 
@@ -119,6 +121,23 @@ export function WorkerWeekClient({
     const ids = new Set(items.map((i) => i.id));
     return conflicts.filter((c) => c.itemIds.some((id) => ids.has(id)));
   }, [conflicts, items]);
+  const visibleConflicts = weekConflicts.filter((c) => !c.ignored);
+  const ignoredConflicts = weekConflicts.filter((c) => c.ignored).length;
+
+  async function ignorer(c: Conflict) {
+    setBusy(true);
+    const res = await fetch("/api/conflicts/ignore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: conflictKey(c), ignored: true }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setMsg({ ok: false, text: j.error ?? "Impossible d'ignorer cet avertissement." });
+    }
+    setBusy(false);
+    refresh();
+  }
 
   const totalMin = items.reduce(
     (sum, it) => sum + Math.max(0, minutes(it.heureFin) - minutes(it.heureDebut)),
@@ -405,14 +424,14 @@ export function WorkerWeekClient({
                 <AlertTriangle className="h-4 w-4 text-warning" />
                 Incohérences sur cette semaine
               </div>
-              {weekConflicts.length === 0 ? (
+              {visibleConflicts.length === 0 ? (
                 <p className="flex items-center gap-2 text-sm text-success">
                   <CheckCircle2 className="h-4 w-4" /> Aucune incohérence pour {workerLabel} cette
                   semaine.
                 </p>
               ) : (
-                weekConflicts.map((c, i) => (
-                  <p
+                visibleConflicts.map((c, i) => (
+                  <div
                     key={i}
                     className={`flex items-start gap-1.5 rounded-md border p-2 text-xs ${
                       c.severite === "BLOQUANT"
@@ -425,9 +444,26 @@ export function WorkerWeekClient({
                     ) : (
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
                     )}
-                    <span className="text-muted-foreground">{c.message}</span>
-                  </p>
+                    <span className="flex-1 text-muted-foreground">{c.message}</span>
+                    {c.severite === "AVERTISSEMENT" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Masquer cet avertissement"
+                        disabled={busy}
+                        onClick={() => ignorer(c)}
+                      >
+                        <EyeOff className="h-3.5 w-3.5" /> Ignorer
+                      </Button>
+                    )}
+                  </div>
                 ))
+              )}
+              {ignoredConflicts > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {ignoredConflicts} avertissement(s) ignoré(s) cette semaine — réaffichables dans
+                  la rubrique Incohérences.
+                </p>
               )}
               <p className="text-xs text-muted-foreground">
                 Ces créneaux restent en brouillon : publiez le planning pour que l&apos;équipe les
@@ -477,18 +513,36 @@ function DuplicateWorkerWeekDialog({
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  const [mode, setMode] = useState<"suivantes" | "calendrier">("suivantes");
   const [count, setCount] = useState(3);
+  const [choisies, setChoisies] = useState<string[]>([]);
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Semaines cibles selon le mode choisi.
+  const targetMondays =
+    mode === "suivantes"
+      ? Array.from({ length: count }, (_, i) => addDaysStr(sourceMonday, (i + 1) * 7))
+      : [...choisies].sort();
+
+  function toggleSemaine(monday: string) {
+    setChoisies((prev) =>
+      prev.includes(monday) ? prev.filter((m) => m !== monday) : [...prev, monday],
+    );
+  }
+
   async function run() {
+    if (targetMondays.length === 0) {
+      setError("Choisissez au moins une semaine dans le calendrier.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await fetch("/api/schedule/duplicate-worker-week", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workerId, sourceMonday, count, replace }),
+      body: JSON.stringify({ workerId, sourceMonday, targetMondays, replace }),
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -506,19 +560,50 @@ function DuplicateWorkerWeekDialog({
       <div className="space-y-3 text-sm">
         <p className="text-muted-foreground">
           Copie les créneaux de <strong>{workerLabel}</strong> de la semaine du{" "}
-          <strong>{dateFr(sourceMonday)}</strong> (lundi → dimanche) vers les semaines suivantes. Le
-          planning des autres personnes n&apos;est pas modifié.
+          <strong>{dateFr(sourceMonday)}</strong> (lundi → dimanche). Le planning des autres
+          personnes n&apos;est pas modifié.
         </p>
-        <div>
-          <Label>Nombre de semaines suivantes à remplir</Label>
-          <Input
-            type="number"
-            min={1}
-            max={12}
-            value={count}
-            onChange={(e) => setCount(Math.min(12, Math.max(1, Number(e.target.value))))}
-          />
+
+        <div className="flex overflow-hidden rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => setMode("suivantes")}
+            className={`flex-1 px-3 py-1.5 text-sm ${mode === "suivantes" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+          >
+            Les semaines suivantes
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("calendrier")}
+            className={`flex-1 px-3 py-1.5 text-sm ${mode === "calendrier" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+          >
+            Choisir dans le calendrier
+          </button>
         </div>
+
+        {mode === "suivantes" ? (
+          <div>
+            <Label>Nombre de semaines suivantes à remplir</Label>
+            <Input
+              type="number"
+              min={1}
+              max={12}
+              value={count}
+              onChange={(e) => setCount(Math.min(12, Math.max(1, Number(e.target.value))))}
+            />
+          </div>
+        ) : (
+          <WeekPicker selected={choisies} onToggle={toggleSemaine} sourceMonday={sourceMonday} />
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          {targetMondays.length === 0
+            ? "Aucune semaine choisie."
+            : `${targetMondays.length} semaine(s) : ${targetMondays
+                .map((m) => `${m.slice(8)}/${m.slice(5, 7)}`)
+                .join(", ")}`}
+        </p>
+
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
           Remplacer ses créneaux existants dans les semaines cibles

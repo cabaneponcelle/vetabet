@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/db";
 import {
+  conflictKey,
   detectConflicts,
   type Conflict,
   type ConflictItem,
   type WorkerInfo,
   type RoomInfo,
 } from "@/lib/conflicts";
+import { getIgnoredConflictKeys } from "@/lib/settings";
 import type { ItemStatus, Prisma } from "@prisma/client";
 
 // Inclusions communes pour récupérer les libellés (travailleur, salle, activité).
@@ -93,11 +95,14 @@ export async function loadItems(filter: LoadFilter = {}): Promise<SerializedItem
 }
 
 // Calcule les conflits sur un périmètre de statut donné (par défaut : brouillon).
+// Les avertissements mis de côté par la RH sont marqués `ignored: true` (jamais
+// supprimés : c'est l'affichage qui décide de les masquer).
 export async function loadConflicts(status: ItemStatus = "DRAFT"): Promise<Conflict[]> {
-  const [items, workers, rooms] = await Promise.all([
+  const [items, workers, rooms, ignoredKeys] = await Promise.all([
     prisma.scheduleItem.findMany({ where: { status }, include: itemInclude }),
     prisma.worker.findMany({ include: { user: true, availabilities: true } }),
     prisma.room.findMany(),
+    getIgnoredConflictKeys(),
   ]);
 
   const ci: ConflictItem[] = items.map((it) => ({
@@ -125,5 +130,8 @@ export async function loadConflicts(status: ItemStatus = "DRAFT"): Promise<Confl
 
   const ri: RoomInfo[] = rooms.map((r) => ({ id: r.id, nom: r.nom, actif: r.actif }));
 
-  return detectConflicts(ci, wi, ri);
+  const ignored = new Set(ignoredKeys);
+  return detectConflicts(ci, wi, ri).map((c) =>
+    c.severite === "AVERTISSEMENT" && ignored.has(conflictKey(c)) ? { ...c, ignored: true } : c,
+  );
 }

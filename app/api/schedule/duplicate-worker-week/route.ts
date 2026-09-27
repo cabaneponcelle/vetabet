@@ -3,10 +3,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdminApi, badRequest } from "@/lib/api";
 
+const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+
 const schema = z.object({
   workerId: z.string().min(1),
-  sourceMonday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  count: z.number().int().min(1).max(12), // nombre de semaines suivantes à remplir
+  sourceMonday: z.string().regex(dateRe),
+  // Semaines cibles choisies dans le calendrier (une date par semaine ; elle est
+  // ramenée au lundi côté serveur).
+  targetMondays: z.array(z.string().regex(dateRe)).min(1).max(26),
   replace: z.boolean().optional(), // remplacer les créneaux existants DE CETTE PERSONNE
 });
 
@@ -15,9 +19,14 @@ function toMs(d: string): number {
   const [y, m, j] = d.split("-").map(Number);
   return Date.UTC(y, m - 1, j);
 }
+function mondayMs(d: string): number {
+  const ms = toMs(d);
+  const dow = (new Date(ms).getUTCDay() + 6) % 7; // 0 = lundi
+  return ms - dow * DAY;
+}
 
-// POST /api/schedule/duplicate-worker-week — duplique la semaine BROUILLON d'UNE
-// personne vers les N semaines suivantes. Contrairement à duplicate-week, les
+// POST /api/schedule/duplicate-worker-week — recopie la semaine BROUILLON d'UNE
+// personne vers les semaines choisies. Contrairement à duplicate-week, les
 // créneaux des autres travailleurs ne sont jamais touchés.
 export async function POST(req: NextRequest) {
   const guard = await requireAdminApi();
@@ -26,13 +35,21 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) return badRequest("Données invalides", parsed.error.flatten());
-  const { workerId, sourceMonday, count, replace } = parsed.data;
+  const { workerId, sourceMonday, targetMondays, replace } = parsed.data;
 
   const worker = await prisma.worker.findUnique({ where: { id: workerId } });
   if (!worker) return badRequest("Travailleur introuvable.");
 
-  const srcStart = toMs(sourceMonday);
+  const srcStart = mondayMs(sourceMonday);
   const srcEnd = srcStart + 6 * DAY;
+
+  // Semaines cibles : lundis uniques, hors semaine source.
+  const cibles = [...new Set(targetMondays.map(mondayMs))]
+    .filter((ms) => ms !== srcStart)
+    .sort((a, b) => a - b);
+  if (cibles.length === 0) {
+    return badRequest("Choisissez au moins une semaine différente de la semaine source.");
+  }
 
   const sourceItems = await prisma.scheduleItem.findMany({
     where: {
@@ -48,10 +65,9 @@ export async function POST(req: NextRequest) {
   let created = 0;
   let replaced = 0;
   await prisma.$transaction(async (tx) => {
-    for (let i = 1; i <= count; i++) {
-      const offset = i * 7 * DAY;
-      const tStart = srcStart + offset;
-      const tEnd = srcEnd + offset;
+    for (const tStart of cibles) {
+      const offset = tStart - srcStart;
+      const tEnd = tStart + 6 * DAY;
 
       if (replace) {
         const del = await tx.scheduleItem.deleteMany({
@@ -84,5 +100,5 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  return NextResponse.json({ ok: true, created, replaced, weeks: count });
+  return NextResponse.json({ ok: true, created, replaced, weeks: cibles.length });
 }

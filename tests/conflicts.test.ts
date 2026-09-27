@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  conflictKey,
   detectConflicts,
   overlaps,
   timeToMinutes,
@@ -178,5 +179,27 @@ describe("hasBlocking", () => {
       rooms,
     );
     expect(hasBlocking(c)).toBe(false);
+  });
+});
+
+describe("conflictKey", () => {
+  const base = {
+    type: "HORS_DISPO" as const,
+    date: "2026-07-13",
+    heure: "14:00–15:00",
+    itemIds: ["a", "b"],
+  };
+
+  it("est stable quel que soit l'ordre des créneaux impliqués", () => {
+    expect(conflictKey(base)).toBe(conflictKey({ ...base, itemIds: ["b", "a"] }));
+  });
+
+  it("change si l'horaire ou la date change (l'avertissement réapparaît)", () => {
+    expect(conflictKey({ ...base, heure: "15:00–16:00" })).not.toBe(conflictKey(base));
+    expect(conflictKey({ ...base, date: "2026-07-14" })).not.toBe(conflictKey(base));
+  });
+
+  it("distingue deux incohérences de types différents sur le même créneau", () => {
+    expect(conflictKey({ ...base, type: "SUR_CONGE" })).not.toBe(conflictKey(base));
   });
 });
