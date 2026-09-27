@@ -69,10 +69,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Démo — Admin : prénom « admin », mot de passe « admin1234 »
-        </p>
       </div>
     </div>
   );

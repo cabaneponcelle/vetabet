@@ -15,6 +15,9 @@ export interface DialogDefaults {
   date?: string;
   heureDebut?: string;
   heureFin?: string;
+  workerId?: string;
+  roomId?: string;
+  activityId?: string;
 }
 
 interface Props {
@@ -62,9 +65,9 @@ export function ScheduleItemDialog({ open, onClose, onSaved, reference, item, de
         date: defaults?.date ?? new Date().toISOString().slice(0, 10),
         heureDebut: defaults?.heureDebut ?? "09:00",
         heureFin: defaults?.heureFin ?? "10:00",
-        workerId: "",
-        roomId: "",
-        activityId: "",
+        workerId: defaults?.workerId ?? "",
+        roomId: defaults?.roomId ?? "",
+        activityId: defaults?.activityId ?? "",
       });
     }
   }, [open, item, defaults]);

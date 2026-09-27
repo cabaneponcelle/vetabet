@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarPlus,
   Users,
   DoorOpen,
   Search,
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/planning", label: "Planning", icon: CalendarDays },
+  { href: "/admin/semaine", label: "Semaine d'une personne", icon: CalendarPlus },
   { href: "/admin/travailleurs", label: "Travailleurs", icon: Users },
   { href: "/admin/salles", label: "Salles", icon: DoorOpen },
   { href: "/admin/recherche", label: "Recherche", icon: Search },

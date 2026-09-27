@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Search, Pencil, Trash2, CalendarRange, Power } from "lucide-react";
+import Link from "next/link";
+import { Plus, Search, Pencil, Trash2, CalendarRange, CalendarPlus, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,6 +132,11 @@ export function WorkersClient() {
                       <Button variant="ghost" size="icon" title="Voir l'emploi du temps" onClick={() => setEdtWorker(w)}>
                         <CalendarRange className="h-4 w-4" />
                       </Button>
+                      <Link href={`/admin/semaine?workerId=${w.id}`} title="Construire sa semaine">
+                        <Button variant="ghost" size="icon">
+                          <CalendarPlus className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         variant="ghost"
                         size="icon"
