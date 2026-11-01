@@ -1,31 +1,27 @@
-// Publie le planning (DRAFT -> copies PUBLISHED) contre la base DATABASE_URL.
-import { PrismaClient } from "@prisma/client";
-const p = new PrismaClient();
-(async () => {
-  const drafts = await p.scheduleItem.findMany({ where: { status: "DRAFT" } });
-  const published = await p.scheduleItem.findMany({ where: { status: "PUBLISHED" } });
-  const bySource = new Map(published.map((x) => [x.sourceId, x]));
-  const draftIds = new Set(drafts.map((d) => d.id));
+// Publie le planning (brouillon -> copies publiées) en ligne de commande, en
+// réutilisant exactement la logique du bouton « Publier » de l'application
+// (lib/publish.ts) : écriture groupée, refus si un conflit BLOQUANT subsiste.
+//
+//   npx tsx scripts/publish.ts
+//   DATABASE_URL=… npx tsx scripts/publish.ts   (autre base)
+import { publishPlanning } from "../lib/publish";
 
-  for (const pub of published) {
-    if (!pub.sourceId || !draftIds.has(pub.sourceId)) {
-      await p.scheduleItem.delete({ where: { id: pub.id } });
-    }
+async function main() {
+  const t0 = Date.now();
+  const res = await publishPlanning();
+  const secondes = ((Date.now() - t0) / 1000).toFixed(1);
+
+  if (!res.ok) {
+    console.error(`Publication refusée : ${res.blocking} conflit(s) bloquant(s) à corriger.`);
+    process.exit(1);
   }
-  let count = 0;
-  for (const d of drafts) {
-    const data = {
-      titre: d.titre, description: d.description, date: d.date,
-      heureDebut: d.heureDebut, heureFin: d.heureFin,
-      workerId: d.workerId, roomId: d.roomId, activityId: d.activityId,
-      status: "PUBLISHED" as const, sourceId: d.id, createdBy: d.createdBy,
-    };
-    const ex = bySource.get(d.id);
-    if (ex) await p.scheduleItem.update({ where: { id: ex.id }, data });
-    else await p.scheduleItem.create({ data });
-    count++;
-  }
-  const totalPub = await p.scheduleItem.count({ where: { status: "PUBLISHED" } });
-  console.log(`Publié : ${count} créneaux brouillon -> publiés. Total publiés en base : ${totalPub}`);
-  await p.$disconnect();
-})().catch((e) => { console.error(e.message); process.exit(1); });
+  console.log(
+    `✅ Planning publié en ${secondes} s — ${res.published} créneaux visibles par l'équipe ` +
+      `(${res.crees} ajoutés, ${res.modifies} mis à jour, ${res.supprimes} retirés).`,
+  );
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
