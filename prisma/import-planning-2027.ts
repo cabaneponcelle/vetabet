@@ -7,18 +7,22 @@
 //  aucune). Le script est idempotent : il remplace les créneaux brouillon de la
 //  période avant de les recréer.
 //
-//    npx tsx prisma/import-planning-2027.ts             → import réel
-//    DRY_RUN=1 npx tsx prisma/import-planning-2027.ts   → simulation
-//    DATABASE_URL=… npx tsx prisma/import-planning-2027.ts  → autre base
+//  Le fichier de données n'est PAS versionné (dépôt public, planning nominatif) :
+//  il est lu au lancement, pas importé à la compilation.
+//
+//    npx tsx prisma/import-planning-2027.ts [fichier.json]   → import réel
+//    DRY_RUN=1 npx tsx prisma/import-planning-2027.ts        → simulation
+//    DATABASE_URL=… npx tsx prisma/import-planning-2027.ts   → autre base
 // ─────────────────────────────────────────────────────────────────────────────
+import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import data from "./planning-2027-data.json";
 
 const prisma = new PrismaClient();
 const DRY = process.env.DRY_RUN === "1";
 
 const MOT_DE_PASSE_DEFAUT = "veto1234";
+const FICHIER_DEFAUT = "prisma/planning-2027-data.json";
 
 interface Item {
   worker: string;
@@ -26,6 +30,26 @@ interface Item {
   heureDebut: string;
   heureFin: string;
   activity: string;
+}
+
+interface Donnees {
+  source: string;
+  semaine1: string;
+  nouvellesActivites: Record<string, string>;
+  items: Item[];
+}
+
+function lireDonnees(): Donnees {
+  const chemin = process.argv[2] ?? FICHIER_DEFAUT;
+  try {
+    return JSON.parse(readFileSync(chemin, "utf-8")) as Donnees;
+  } catch {
+    throw new Error(
+      `Fichier de données introuvable ou illisible : ${chemin}\n` +
+        `Il n'est pas versionné (le dépôt est public et le planning est nominatif).\n` +
+        `Régénérez-le depuis le fichier source, ou passez son chemin en argument.`,
+    );
+  }
 }
 
 // Comparaison de noms insensible à la casse, aux accents et aux espaces.
@@ -48,8 +72,9 @@ function categorieDe(nom: string): string {
 }
 
 async function main() {
-  const items = data.items as Item[];
-  const nouvelles = data.nouvellesActivites as Record<string, string>;
+  const data = lireDonnees();
+  const items = data.items;
+  const nouvelles = data.nouvellesActivites ?? {};
   const dates = items.map((i) => i.date).sort();
   const debut = new Date(`${dates[0]}T00:00:00.000Z`);
   const fin = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);

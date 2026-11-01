@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Données de planning nominatives converties depuis Excel/ODS : le dépôt est
+# public, on ne les versionne pas (prisma/planning-data.json, antérieur, y est déjà).
+prisma/planning-2027-data.json
+prisma/planning-nov-2026-data.json
