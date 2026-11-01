@@ -35,8 +35,15 @@ export function PublishButton({
     setMessage(null);
     try {
       const res = await fetch("/api/schedule/publish", { method: "POST" });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? "Erreur de publication");
+      // En cas de timeout ou d'erreur serveur, la réponse n'est pas du JSON :
+      // on le dit clairement plutôt que d'afficher une erreur d'analyse.
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j) {
+        throw new Error(
+          j?.error ??
+            `La publication n'a pas abouti (erreur ${res.status}). Si le planning est volumineux, réessayez ; si cela se reproduit, prévenez la maintenance.`,
+        );
+      }
       setMessage(`✅ Planning publié (${j.published} créneau·x visibles par les travailleurs).`);
       onPublished?.();
     } catch (e) {

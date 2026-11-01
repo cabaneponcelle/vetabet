@@ -195,6 +195,15 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
                     <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, 7))}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
+                    {/* Saut direct à une date : indispensable pour atteindre une
+                        semaine éloignée sans cliquer semaine par semaine. */}
+                    <Input
+                      type="date"
+                      className="ml-2 h-8 w-36"
+                      title="Aller à une date"
+                      value={viewMonday}
+                      onChange={(e) => e.target.value && setViewMonday(mondayOf(e.target.value))}
+                    />
                   </div>
                   <div className="text-sm font-semibold">{weekLabel(viewMonday)}</div>
                 </div>

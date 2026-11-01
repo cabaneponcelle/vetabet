@@ -255,6 +255,13 @@ export function WorkerWeekClient({
           <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, 7))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+          <Input
+            type="date"
+            className="ml-1 h-8 w-36"
+            title="Aller à une date"
+            value={viewMonday}
+            onChange={(e) => e.target.value && setViewMonday(mondayOf(e.target.value))}
+          />
         </div>
         <span className="text-sm font-semibold">
           Semaine du {ddmm(viewMonday)} au {ddmm(addDaysStr(viewMonday, 6))}
