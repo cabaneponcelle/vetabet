@@ -74,6 +74,22 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
     refresh();
   }, [refresh]);
 
+  // Une page laissée ouverte affichait indéfiniment l'état du moment où elle
+  // avait été chargée : incohérences déjà corrigées, date de publication
+  // dépassée, bouton « Publier » grisé à tort. On recharge dès que l'onglet
+  // redevient actif.
+  useEffect(() => {
+    function onFocus() {
+      if (document.visibilityState === "visible") refresh();
+    }
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [refresh]);
+
   // Filtre par activité (côté client) + détection de modifications non publiées.
   const shownItems = activityId ? items.filter((i) => i.activityId === activityId) : items;
   const hasUnpublished = items.some((i) => !lastPub || i.updatedAt > lastPub);
