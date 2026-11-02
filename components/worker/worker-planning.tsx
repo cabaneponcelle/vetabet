@@ -1,16 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Flag, CalendarDays, Table2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Flag, CalendarDays, Table2, Columns3, ChevronLeft, ChevronRight } from "lucide-react";
 import { PlanningCalendar } from "@/components/planning-calendar";
 import { PlanningGrid } from "@/components/planning-grid";
+import { PlanningDay } from "@/components/planning-day";
 import { ActivityLegend } from "@/components/activity-legend";
 import { ComplaintDialog } from "@/components/worker/complaint-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { dateFr, mondayOf, addDaysStr } from "@/lib/utils";
+import { dateFr, dateLongFr, mondayOf, addDaysStr } from "@/lib/utils";
 import type { SerializedItem } from "@/lib/schedule";
 import type { RefOption } from "@/lib/reference";
 
@@ -43,10 +44,12 @@ export function WorkerPlanning({
   const [workerId, setWorkerId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [activityId, setActivityId] = useState("");
-  const [view, setView] = useState<"grille" | "calendrier">("grille");
-  const [viewMonday, setViewMonday] = useState<string>(
-    mondayOf(new Date().toISOString().slice(0, 10)),
+  // Vue « Jour » par défaut sur le planning global (une colonne par véto, comme
+  // l'agenda de la clinique) ; « Semaine » pour son propre planning.
+  const [view, setView] = useState<"jour" | "grille" | "calendrier">(
+    scope === "global" ? "jour" : "grille",
   );
+  const [viewDate, setViewDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -78,6 +81,16 @@ export function WorkerPlanning({
   }
 
   const shownItems = activityId ? items.filter((i) => i.activityId === activityId) : items;
+  const viewMonday = mondayOf(viewDate);
+
+  // Colonnes de la vue « Jour » : déduites des créneaux pour « mon planning »,
+  // liste complète des vétos (ou celui du filtre) pour le planning global.
+  const dayColumns =
+    scope === "global" && reference
+      ? reference.workers
+          .filter((w) => w.actif !== false && (!workerId || w.id === workerId))
+          .map((w) => ({ id: w.id, nom: w.label }))
+      : undefined;
 
   return (
     <div className="space-y-4">
@@ -90,10 +103,16 @@ export function WorkerPlanning({
         </div>
         <div className="flex overflow-hidden rounded-md border border-border">
           <button
+            onClick={() => setView("jour")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "jour" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+          >
+            <Columns3 className="h-4 w-4" /> Jour
+          </button>
+          <button
             onClick={() => setView("grille")}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${view === "grille" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
           >
-            <Table2 className="h-4 w-4" /> Grille
+            <Table2 className="h-4 w-4" /> Semaine
           </button>
           <button
             onClick={() => setView("calendrier")}
@@ -143,35 +162,58 @@ export function WorkerPlanning({
             <p className="py-6 text-center text-sm text-muted-foreground">
               Aucun créneau publié pour l&apos;instant.
             </p>
-          ) : view === "grille" ? (
+          ) : view === "calendrier" ? (
+            <PlanningCalendar
+              items={shownItems}
+              readOnly
+              onEventClick={(it) => setDetail(it)}
+              onDatesSet={(s) => setViewDate(s)}
+            />
+          ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, -7))}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setViewDate(addDaysStr(viewDate, view === "jour" ? -1 : -7))}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setViewMonday(mondayOf(new Date().toISOString().slice(0, 10)))}
+                    onClick={() => setViewDate(new Date().toISOString().slice(0, 10))}
                   >
                     Aujourd&apos;hui
                   </Button>
-                  <Button variant="outline" size="icon" onClick={() => setViewMonday(addDaysStr(viewMonday, 7))}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setViewDate(addDaysStr(viewDate, view === "jour" ? 1 : 7))}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="text-sm font-semibold">{weekLabel(viewMonday)}</div>
+                <div className="text-sm font-semibold">
+                  {view === "jour" ? dateLongFr(viewDate) : weekLabel(viewMonday)}
+                </div>
               </div>
-              <PlanningGrid items={shownItems} weekMonday={viewMonday} onEventClick={(it) => setDetail(it)} />
+              {view === "jour" ? (
+                <PlanningDay
+                  items={shownItems}
+                  date={viewDate}
+                  workers={dayColumns}
+                  onEventClick={(it) => setDetail(it)}
+                />
+              ) : (
+                <PlanningGrid
+                  items={shownItems}
+                  weekMonday={viewMonday}
+                  onEventClick={(it) => setDetail(it)}
+                />
+              )}
             </div>
-          ) : (
-            <PlanningCalendar
-              items={shownItems}
-              readOnly
-              onEventClick={(it) => setDetail(it)}
-              onDatesSet={(s) => setViewMonday(mondayOf(s))}
-            />
           )}
         </CardContent>
       </Card>
