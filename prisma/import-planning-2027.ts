@@ -40,8 +40,13 @@ interface Donnees {
   items: Item[];
 }
 
+// Reprend aussi les créneaux d'un import précédent qu'un script a retouchés
+// depuis (remappage d'activités, correction d'alignement). À n'utiliser que
+// lorsque le fichier source fait autorité sur toute la période.
+const REMPLACER_IMPORTS = process.argv.includes("--remplacer-imports");
+
 function lireDonnees(): Donnees {
-  const chemin = process.argv[2] ?? FICHIER_DEFAUT;
+  const chemin = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? FICHIER_DEFAUT;
   try {
     return JSON.parse(readFileSync(chemin, "utf-8")) as Donnees;
   } catch {
@@ -179,7 +184,7 @@ async function main() {
   const remplacables = existants.filter(
     (e) =>
       e.createdBy?.startsWith("import-") &&
-      e.updatedAt.getTime() - e.createdAt.getTime() < MARGE_MS,
+      (REMPLACER_IMPORTS || e.updatedAt.getTime() - e.createdAt.getTime() < MARGE_MS),
   );
   const aGarder = existants.filter((e) => !remplacables.includes(e));
   const cle = (w: string | null, d: Date, h1: string, h2: string) =>
