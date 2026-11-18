@@ -45,3 +45,4 @@ next-env.d.ts
 # public, on ne les versionne pas (prisma/planning-data.json, antérieur, y est déjà).
 prisma/planning-2027-data.json
 prisma/planning-nov-2026-data.json
+prisma/planning-dec-2026-data.json

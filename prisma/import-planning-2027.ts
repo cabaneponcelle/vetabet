@@ -40,13 +40,25 @@ interface Donnees {
   items: Item[];
 }
 
+const ARGV = process.argv.slice(2);
+
 // Reprend aussi les créneaux d'un import précédent qu'un script a retouchés
 // depuis (remappage d'activités, correction d'alignement). À n'utiliser que
 // lorsque le fichier source fait autorité sur toute la période.
-const REMPLACER_IMPORTS = process.argv.includes("--remplacer-imports");
+const REMPLACER_IMPORTS = ARGV.includes("--remplacer-imports");
+
+// --fenetre <début> <fin> : limite la période où l'on remplace l'existant.
+// Utile quand le fichier déborde d'un jour sur une période déjà importée
+// depuis une autre source — une garde du dimanche soir se terminant le lundi
+// matin suffit à faire croire que la semaine suivante est à refaire.
+const I_FENETRE = ARGV.indexOf("--fenetre");
+const FENETRE = I_FENETRE >= 0 ? ARGV.slice(I_FENETRE + 1, I_FENETRE + 3) : [];
 
 function lireDonnees(): Donnees {
-  const chemin = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? FICHIER_DEFAUT;
+  const positionnels = ARGV.filter(
+    (a, k) => !a.startsWith("--") && !(I_FENETRE >= 0 && (k === I_FENETRE + 1 || k === I_FENETRE + 2)),
+  );
+  const chemin = positionnels[0] ?? FICHIER_DEFAUT;
   try {
     return JSON.parse(readFileSync(chemin, "utf-8")) as Donnees;
   } catch {
@@ -166,8 +178,18 @@ async function main() {
   //  n'a retouché depuis : tout ce que la RH a ajouté ou corrigé à la main dans
   //  l'application est conservé, et l'import ne repose pas un doublon par-dessus
   //  (même personne, même jour, mêmes heures).
+  const fenetreDebut = FENETRE[0] ? new Date(`${FENETRE[0]}T00:00:00.000Z`) : debut;
+  const fenetreFin = FENETRE[1] ? new Date(`${FENETRE[1]}T00:00:00.000Z`) : fin;
+  const dansFenetre = (d: Date) => d >= fenetreDebut && d <= fenetreFin;
+
   const existants = await prisma.scheduleItem.findMany({
-    where: { status: "DRAFT", date: { gte: debut, lte: fin } },
+    where: {
+      status: "DRAFT",
+      date: {
+        gte: debut < fenetreDebut ? debut : fenetreDebut,
+        lte: fin > fenetreFin ? fin : fenetreFin,
+      },
+    },
     select: {
       id: true,
       createdBy: true,
@@ -183,6 +205,7 @@ async function main() {
   const MARGE_MS = 2_000; // écart toléré entre création et dernière écriture
   const remplacables = existants.filter(
     (e) =>
+      dansFenetre(e.date) &&
       e.createdBy?.startsWith("import-") &&
       (REMPLACER_IMPORTS || e.updatedAt.getTime() - e.createdAt.getTime() < MARGE_MS),
   );
@@ -192,8 +215,10 @@ async function main() {
   const dejaLa = new Set(aGarder.map((e) => cle(e.workerId, e.date, e.heureDebut, e.heureFin)));
 
   console.log(
-    `  ${existants.length} créneau(x) brouillon sur la période : ${remplacables.length} remplacés, ` +
-      `${aGarder.length} conservés (saisis ou corrigés dans l'application)`,
+    `  ${existants.length} créneau(x) brouillon sur la période ` +
+      `(remplacement du ${fenetreDebut.toISOString().slice(0, 10)} au ` +
+      `${fenetreFin.toISOString().slice(0, 10)}) : ${remplacables.length} remplacés, ` +
+      `${aGarder.length} conservés (hors fenêtre, saisis ou corrigés dans l'application)`,
   );
 
   if (DRY) {

@@ -11,9 +11,18 @@ personnalisé). Une première version ne lisait que les fonds RVB et perdait
 60 % du planning sans rien signaler. On résout donc le thème du classeur et on
 applique la teinte, comme le fait Excel à l'affichage.
 
-Produit le JSON attendu par prisma/import-planning-2027.ts :
+Les quatre feuilles sont les quatre rangs d'un roulement (S1…S4) qui tourne
+sans fin : on indique donc un lundi S1 de référence, puis la première semaine
+à produire et leur nombre. Produit le JSON attendu par
+prisma/import-planning-2027.ts :
 
-    python -I scripts/extract_planning_xlsx.py <classeur.xlsx> <sortie.json> <lundi_semaine1>
+    python -I scripts/extract_planning_xlsx.py <classeur.xlsx> <sortie.json> \\
+        <lundi S1 de référence> <lundi de la 1re semaine voulue> [nb semaines]
+
+Exemple (novembre 2026, roulement calé sur le lundi 02/11/2026 = S1) :
+
+    python -I scripts/extract_planning_xlsx.py classeur.xlsx sortie.json \\
+        2026-11-02 2026-11-02 4
 """
 
 import collections
@@ -172,14 +181,13 @@ def heures_de(libelle):
     return int(m.group(1)), int(m.group(2))
 
 
-def main():
-    classeur, sortie, lundi1 = sys.argv[1], sys.argv[2], sys.argv[3]
-    lundi_s1 = dt.date.fromisoformat(lundi1)
+def lire(classeur):
+    """{rang du roulement 1-4 -> [(personne, jour 0-6, h début, h fin, activité)]}"""
     wb = openpyxl.load_workbook(classeur, data_only=True)
     brut = wb.loaded_theme
     palette = palette_du_theme(brut.decode("utf-8") if isinstance(brut, bytes) else brut or "")
 
-    items = []
+    par_semaine = collections.defaultdict(list)
     inconnues = collections.Counter()
     qui = collections.defaultdict(collections.Counter)
     ignorees = collections.Counter()
@@ -209,8 +217,6 @@ def main():
                 elif val:
                     ignorees[str(val).strip()] += 1
 
-            date = lundi_s1 + dt.timedelta(days=(semaine - 1) * 7 + jour)
-
             for c, personne in colonnes.items():
                 cases = []
                 for r, (h1, h2) in lignes:
@@ -239,15 +245,40 @@ def main():
                     while k < len(cases) and cases[k][0] == act:
                         fin = cases[k][2]
                         k += 1
-                    items.append(
-                        {
-                            "worker": personne,
-                            "date": date.isoformat(),
-                            "heureDebut": f"{debut:02d}:00",
-                            "heureFin": "23:59" if fin >= 24 else f"{fin:02d}:00",
-                            "activity": act,
-                        }
-                    )
+                    par_semaine[semaine].append((personne, jour, debut, fin, act))
+
+    return par_semaine, inconnues, qui, ignorees
+
+
+def main():
+    classeur, sortie, lundi_s1, premier_lundi = sys.argv[1:5]
+    nb_semaines = int(sys.argv[5]) if len(sys.argv) > 5 else 4
+
+    ancre = dt.date.fromisoformat(lundi_s1)
+    debut = dt.date.fromisoformat(premier_lundi)
+    if ancre.weekday() or debut.weekday():
+        raise SystemExit("Les deux dates doivent être des lundis.")
+
+    par_semaine, inconnues, qui, ignorees = lire(classeur)
+
+    items = []
+    plan = []
+    for n in range(nb_semaines):
+        lundi = debut + dt.timedelta(days=7 * n)
+        semaine = ((lundi - ancre).days // 7) % 4 + 1
+        plan.append((lundi, semaine, len(par_semaine[semaine])))
+
+        for personne, jour, h1, h2, act in par_semaine[semaine]:
+            date = lundi + dt.timedelta(days=jour)
+            items.append(
+                {
+                    "worker": personne,
+                    "date": date.isoformat(),
+                    "heureDebut": f"{h1:02d}:00",
+                    "heureFin": "23:59" if h2 >= 24 else f"{h2:02d}:00",
+                    "activity": act,
+                }
+            )
 
     items.sort(key=lambda x: (x["date"], x["heureDebut"], x["worker"]))
     nouvelles = {
@@ -259,8 +290,8 @@ def main():
 
     json.dump(
         {
-            "source": "planning 2025 - assistovet - 27-02-26_2462.xlsx (couleurs de thème résolues)",
-            "semaine1": lundi_s1.isoformat(),
+            "source": f"{classeur} (couleurs de thème résolues, roulement calé sur {lundi_s1} = S1)",
+            "semaine1": premier_lundi,
             "nouvellesActivites": nouvelles,
             "items": items,
         },
@@ -272,17 +303,18 @@ def main():
     dates = sorted({i["date"] for i in items})
     print(f"{len(items)} créneaux, du {dates[0]} au {dates[-1]}")
     print(f"{len({i['worker'] for i in items})} personnes")
+    print("\nsemaines produites :")
+    for lundi, semaine, n in plan:
+        print(f"  {lundi}  ->  S{semaine}  ({n} créneaux)")
     print("\npar activité (et qui la fait) :")
     for a, n in collections.Counter(i["activity"] for i in items).most_common():
         gens = ", ".join(p for p, _ in qui[a].most_common(5))
         print(f"  {n:4d}  {a:34s} {gens}")
-    print("\npar jour :")
-    for d in dates:
-        print(f"  {d} : {sum(1 for i in items if i['date'] == d)}")
     if ignorees:
         print("\ncolonnes ignorées :", dict(ignorees))
     if inconnues:
         print("couleurs non reconnues :", dict(inconnues))
 
 
-main()
+if __name__ == "__main__":
+    main()
