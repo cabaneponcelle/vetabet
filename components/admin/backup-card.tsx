@@ -40,7 +40,7 @@ export function BackupCard() {
 
         <div>
           <div className="mb-1 text-xs font-medium text-muted-foreground">
-            Sauvegardes automatiques (quotidiennes)
+            Sauvegardes automatiques (toutes les 6 h ; les 40 dernières sont conservées)
           </div>
           {unavailable ? (
             <p className="text-xs text-muted-foreground">
