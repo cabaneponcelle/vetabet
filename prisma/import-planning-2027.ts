@@ -146,35 +146,69 @@ async function main() {
   }
 
   // ── Remplacement des créneaux brouillon de la période ──────────────────────
-  const existants = await prisma.scheduleItem.count({
+  //  On ne remplace que ce qu'un import précédent avait posé et que personne
+  //  n'a retouché depuis : tout ce que la RH a ajouté ou corrigé à la main dans
+  //  l'application est conservé, et l'import ne repose pas un doublon par-dessus
+  //  (même personne, même jour, mêmes heures).
+  const existants = await prisma.scheduleItem.findMany({
     where: { status: "DRAFT", date: { gte: debut, lte: fin } },
+    select: {
+      id: true,
+      createdBy: true,
+      createdAt: true,
+      updatedAt: true,
+      workerId: true,
+      date: true,
+      heureDebut: true,
+      heureFin: true,
+    },
   });
-  console.log(`  ${existants} créneau(x) brouillon déjà présents sur la période (ils seront remplacés)`);
+
+  const MARGE_MS = 2_000; // écart toléré entre création et dernière écriture
+  const remplacables = existants.filter(
+    (e) =>
+      e.createdBy?.startsWith("import-") &&
+      e.updatedAt.getTime() - e.createdAt.getTime() < MARGE_MS,
+  );
+  const aGarder = existants.filter((e) => !remplacables.includes(e));
+  const cle = (w: string | null, d: Date, h1: string, h2: string) =>
+    `${w}|${d.toISOString().slice(0, 10)}|${h1}|${h2}`;
+  const dejaLa = new Set(aGarder.map((e) => cle(e.workerId, e.date, e.heureDebut, e.heureFin)));
+
+  console.log(
+    `  ${existants.length} créneau(x) brouillon sur la période : ${remplacables.length} remplacés, ` +
+      `${aGarder.length} conservés (saisis ou corrigés dans l'application)`,
+  );
 
   if (DRY) {
     console.log(`  ${items.length} créneaux seraient créés (brouillon, sans salle).`);
     return;
   }
 
-  await prisma.scheduleItem.deleteMany({
-    where: { status: "DRAFT", date: { gte: debut, lte: fin } },
-  });
+  await prisma.scheduleItem.deleteMany({ where: { id: { in: remplacables.map((e) => e.id) } } });
 
-  const rows = items.map((i) => ({
-    titre: null,
-    description: null,
-    date: new Date(`${i.date}T00:00:00.000Z`),
-    heureDebut: i.heureDebut,
-    heureFin: i.heureFin,
-    status: "DRAFT" as const,
-    workerId: workerByName.get(norm(i.worker))!.id,
-    roomId: null, // le fichier source n'indique pas de salle
-    activityId: actByName.get(norm(i.activity))!.id,
-    createdBy: "import-2027",
-  }));
+  const rows = items
+    .map((i) => ({
+      titre: null,
+      description: null,
+      date: new Date(`${i.date}T00:00:00.000Z`),
+      heureDebut: i.heureDebut,
+      heureFin: i.heureFin,
+      status: "DRAFT" as const,
+      workerId: workerByName.get(norm(i.worker))!.id,
+      roomId: null, // le fichier source n'indique pas de salle
+      activityId: actByName.get(norm(i.activity))!.id,
+      createdBy: "import-2027",
+    }))
+    .filter((r) => !dejaLa.has(cle(r.workerId, r.date, r.heureDebut, r.heureFin)));
 
   const res = await prisma.scheduleItem.createMany({ data: rows });
-  console.log(`✅ ${res.count} créneaux créés en brouillon, sans salle.`);
+  console.log(
+    `✅ ${res.count} créneaux créés en brouillon, sans salle` +
+      (items.length - rows.length > 0
+        ? ` (${items.length - rows.length} déjà présents à la main, non dupliqués).`
+        : "."),
+  );
 
   const total = await prisma.scheduleItem.count({ where: { status: "DRAFT" } });
   console.log(`   Total brouillon dans la base : ${total}`);
