@@ -72,6 +72,9 @@ model Worker {
   fonction  String?
   telephone String?
   actif     Boolean @default(true)
+  // Rang d'affichage choisi par la RH (colonnes du planning, listes déroulantes).
+  // Vide = placé après les autres, par prénom.
+  ordre     Int?
 
   availabilities Availability[]
   scheduleItems  ScheduleItem[]

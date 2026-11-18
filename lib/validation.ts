@@ -43,6 +43,16 @@ export const roomSchema = z.object({
   actif: z.boolean().optional(),
 });
 
+export const activitySchema = z.object({
+  nom: z.string().min(1, "Nom requis").max(60),
+  categorie: z.string().max(60).nullish(),
+  // Couleur de fond du créneau dans le planning, en hexadécimal.
+  couleur: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Couleur attendue au format #RRGGBB")
+    .optional(),
+});
+
 export const complaintSchema = z.object({
   scheduleItemId: z.string().nullish(),
   type: z.enum(["INDISPO", "MAUVAISE_SALLE", "HORAIRE", "CONFLIT", "AUTRE"]),
@@ -58,6 +68,9 @@ export const leaveSchema = z
     dateDebut: z.string().regex(dateRe, "Date de début attendue (AAAA-MM-JJ)"),
     dateFin: z.string().regex(dateRe, "Date de fin attendue (AAAA-MM-JJ)"),
     motif: z.string().max(500).nullish(),
+    // Réservés à la RH : encoder le congé de quelqu'un, directement approuvé.
+    workerId: z.string().min(1).optional(),
+    status: z.enum(["EN_ATTENTE", "APPROUVE"]).optional(),
   })
   .refine((d) => d.dateFin >= d.dateDebut, {
     message: "La date de fin doit être après la date de début.",

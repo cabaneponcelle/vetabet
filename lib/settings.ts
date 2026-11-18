@@ -20,20 +20,37 @@ export const SETTINGS = {
   EMAIL_RH: "email_rh",
   WORKERS_VOIENT_GLOBAL: "workers_voient_planning_global",
   AVERTISSEMENTS_IGNORES: "avertissements_ignores",
+  PERSONNES_EXCLUES: "personnes_exclues",
 } as const;
 
-// ── Avertissements ignorés ───────────────────────────────────────────────────
-// Stockés sous forme de tableau JSON de clés (voir conflictKey). Seuls les
-// AVERTISSEMENTS peuvent être ignorés : les conflits bloquants restent visibles.
+// ── Personnes retirées de la clinique ────────────────────────────────────────
+// Prénoms que les imports de planning doivent ignorer : sans cette liste, un
+// nom encore présent dans un fichier Excel recrée le compte supprimé à chaque
+// import, et la personne réapparaît dans le planning de toute l'équipe.
 
-export async function getIgnoredConflictKeys(): Promise<string[]> {
-  const raw = await getSetting(SETTINGS.AVERTISSEMENTS_IGNORES, "[]");
+function listeJson(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
   } catch {
     return [];
   }
+}
+
+export async function getExcludedNames(): Promise<string[]> {
+  return listeJson(await getSetting(SETTINGS.PERSONNES_EXCLUES, "[]"));
+}
+
+export async function setExcludedNames(noms: string[]): Promise<void> {
+  await setSetting(SETTINGS.PERSONNES_EXCLUES, JSON.stringify(noms));
+}
+
+// ── Avertissements ignorés ───────────────────────────────────────────────────
+// Stockés sous forme de tableau JSON de clés (voir conflictKey). Seuls les
+// AVERTISSEMENTS peuvent être ignorés : les conflits bloquants restent visibles.
+
+export async function getIgnoredConflictKeys(): Promise<string[]> {
+  return listeJson(await getSetting(SETTINGS.AVERTISSEMENTS_IGNORES, "[]"));
 }
 
 // Ajoute ou retire une clé. `stillPresent` sert à oublier les clés des

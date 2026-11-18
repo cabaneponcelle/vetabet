@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdminApi, badRequest } from "@/lib/api";
 import { workerSchema } from "@/lib/validation";
 import { uniqueInternalEmail } from "@/lib/slug";
+import { ORDRE_TRAVAILLEURS } from "@/lib/reference";
 
 // GET /api/workers — liste des travailleurs (RH).
 export async function GET(req: NextRequest) {
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.toLowerCase();
   const workers = await prisma.worker.findMany({
     include: { user: true, availabilities: true },
-    orderBy: { user: { prenom: "asc" } },
+    orderBy: ORDRE_TRAVAILLEURS,
   });
   const data = workers
     .map((w) => ({
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
       email: w.user.email,
       fonction: w.fonction,
       telephone: w.telephone,
+      ordre: w.ordre,
       actif: w.actif && w.user.actif,
       availabilities: w.availabilities.map((a) => ({
         jourSemaine: a.jourSemaine,

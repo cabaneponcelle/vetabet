@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Pencil, Trash2, CalendarRange, CalendarPlus, Power } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  CalendarRange,
+  CalendarPlus,
+  Power,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +35,7 @@ interface Worker {
   email: string;
   fonction: string | null;
   telephone: string | null;
+  ordre: number | null;
   actif: boolean;
   availabilities: Availability[];
 }
@@ -75,12 +86,32 @@ export function WorkersClient() {
     load();
   }
 
+  // Ordre d'affichage : la position dans cette liste est celle des colonnes du
+  // planning et de toutes les listes déroulantes. On envoie la liste complète
+  // après chaque déplacement, le serveur renumérote.
+  async function deplacer(index: number, delta: number) {
+    const cible = index + delta;
+    if (cible < 0 || cible >= workers.length) return;
+    const suivant = [...workers];
+    [suivant[index], suivant[cible]] = [suivant[cible], suivant[index]];
+    setWorkers(suivant); // retour visuel immédiat
+    await fetch("/api/workers/ordre", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: suivant.map((w) => w.id) }),
+    });
+    load();
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Travailleurs</h1>
-          <p className="text-sm text-muted-foreground">{workers.length} fiche(s)</p>
+          <p className="text-sm text-muted-foreground">
+            {workers.length} fiche(s) · l&apos;ordre de cette liste est celui des colonnes du
+            planning
+          </p>
         </div>
         <Button
           onClick={() => {
@@ -107,6 +138,7 @@ export function WorkersClient() {
           <Table>
             <THead>
               <TR>
+                <TH className="w-16">Ordre</TH>
                 <TH>Nom</TH>
                 <TH>Fonction</TH>
                 <TH>Téléphone</TH>
@@ -115,8 +147,32 @@ export function WorkersClient() {
               </TR>
             </THead>
             <TBody>
-              {workers.map((w) => (
+              {workers.map((w, i) => (
                 <TR key={w.id}>
+                  <TD>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        title={q ? "Videz la recherche pour réordonner" : "Monter"}
+                        disabled={!!q || i === 0}
+                        onClick={() => deplacer(i, -1)}
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        title={q ? "Videz la recherche pour réordonner" : "Descendre"}
+                        disabled={!!q || i === workers.length - 1}
+                        onClick={() => deplacer(i, 1)}
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TD>
                   <TD className="font-medium">
                     {w.prenom} {w.nom}
                   </TD>
@@ -160,7 +216,7 @@ export function WorkersClient() {
               ))}
               {workers.length === 0 && (
                 <TR>
-                  <TD className="py-6 text-center text-muted-foreground" colSpan={5}>
+                  <TD className="py-6 text-center text-muted-foreground" colSpan={6}>
                     Aucun travailleur.
                   </TD>
                 </TR>

@@ -17,6 +17,7 @@
 import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { getExcludedNames } from "@/lib/settings";
 
 const prisma = new PrismaClient();
 const DRY = process.env.DRY_RUN === "1";
@@ -73,7 +74,17 @@ function categorieDe(nom: string): string {
 
 async function main() {
   const data = lireDonnees();
-  const items = data.items;
+
+  // Personnes retirées de la clinique : leur nom reste dans les fichiers Excel
+  // envoyés par la clinique, mais on ne doit ni recréer leur compte ni remettre
+  // leurs créneaux au planning (voir scripts/retirer-personne.ts).
+  const exclus = new Set((await getExcludedNames()).map(norm));
+  const items = data.items.filter((i) => !exclus.has(norm(i.worker)));
+  const ignores = data.items.length - items.length;
+  if (ignores) {
+    console.log(`  ${ignores} créneau(x) ignorés : ${[...exclus].join(", ")} (personnes retirées)`);
+  }
+  if (items.length === 0) throw new Error("Aucun créneau à importer après exclusions.");
   const nouvelles = data.nouvellesActivites ?? {};
   const dates = items.map((i) => i.date).sort();
   const debut = new Date(`${dates[0]}T00:00:00.000Z`);

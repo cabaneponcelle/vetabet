@@ -258,7 +258,12 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
                     onSlotClick={(d) => openNew(d)}
                   />
                 ) : (
-                  <PlanningGrid items={shownItems} weekMonday={viewMonday} onEventClick={openEdit} />
+                  <PlanningGrid
+                    items={shownItems}
+                    weekMonday={viewMonday}
+                    ordre={reference.workers.map((w) => w.id)}
+                    onEventClick={openEdit}
+                  />
                 )}
               </div>
             )}

@@ -210,6 +210,7 @@ export function WorkerPlanning({
                 <PlanningGrid
                   items={shownItems}
                   weekMonday={viewMonday}
+                  ordre={reference?.workers.map((w) => w.id)}
                   onEventClick={(it) => setDetail(it)}
                 />
               )}

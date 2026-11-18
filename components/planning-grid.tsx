@@ -22,10 +22,12 @@ function ddmm(dateStr: string): string {
 export function PlanningGrid({
   items,
   weekMonday,
+  ordre,
   onEventClick,
 }: {
   items: SerializedItem[];
   weekMonday: string;
+  ordre?: string[]; // identifiants des travailleurs dans l'ordre voulu par la RH
   onEventClick?: (it: SerializedItem) => void;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekMonday, i));
@@ -39,9 +41,16 @@ export function PlanningGrid({
   for (const it of weekItems) {
     if (it.workerId) workerMap.set(it.workerId, it.workerNom ?? "—");
   }
+  // Même ordre que partout ailleurs : le rang choisi par la RH, puis les
+  // personnes qui n'en ont pas, par prénom.
+  const rang = new Map((ordre ?? []).map((id, i) => [id, i]));
   const workers = [...workerMap.entries()]
     .map(([id, nom]) => ({ id, nom }))
-    .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+    .sort(
+      (a, b) =>
+        (rang.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rang.get(b.id) ?? Number.MAX_SAFE_INTEGER) ||
+        a.nom.localeCompare(b.nom, "fr"),
+    );
 
   // Index (workerId|date) -> créneaux triés par heure.
   const byCell = new Map<string, SerializedItem[]>();
