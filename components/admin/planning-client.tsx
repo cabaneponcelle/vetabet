@@ -155,8 +155,8 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_330px]">
-      <div className="space-y-3">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-xl font-semibold">Planning global</h1>

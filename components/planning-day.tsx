@@ -176,11 +176,14 @@ export function PlanningDay({
       </div>
 
       <div className="max-h-[78vh] overflow-auto rounded-md border border-border bg-card">
-        <div className="flex">
+        {/* min-w-max : sans cela ce conteneur ne fait que la largeur visible,
+            et la colonne des heures — collée à gauche — cesse de coller dès
+            qu'on défile au-delà, car elle sort de son bloc conteneur. */}
+        <div className="flex min-w-max">
           {/* Gouttière des heures : reste visible pendant le défilement latéral. */}
-          <div className="sticky left-0 z-30 w-12 shrink-0 bg-card">
+          <div className="sticky left-0 z-20 w-12 shrink-0 bg-card">
             <div
-              className="sticky top-0 z-30 border-b border-r border-border bg-muted"
+              className="sticky top-0 z-20 border-b border-r border-border bg-muted"
               style={{ height: HAUTEUR_ENTETE }}
             />
             <div className="relative border-r border-border" style={{ height: hauteur }}>
@@ -216,7 +219,7 @@ export function PlanningDay({
                 style={{ flex: `1 0 ${LARGEUR_COLONNE}px` }}
               >
                 <div
-                  className="sticky top-0 z-20 flex items-center gap-1 overflow-hidden border-b border-border bg-muted px-1.5"
+                  className="sticky top-0 z-10 flex items-center gap-1 overflow-hidden border-b border-border bg-muted px-1.5"
                   style={{ height: HAUTEUR_ENTETE }}
                   title={col.nom}
                 >

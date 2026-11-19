@@ -91,7 +91,7 @@ export function Sidebar({ userName }: { userName: string }) {
   return (
     <>
       {/* Barre supérieure mobile */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
         <button onClick={() => setOpen(true)} aria-label="Menu">
           <Menu className="h-5 w-5" />
         </button>
@@ -99,7 +99,7 @@ export function Sidebar({ userName }: { userName: string }) {
       </div>
 
       {/* Sidebar fixe (desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 bg-sidebar lg:block">{Panel}</aside>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 bg-sidebar lg:block">{Panel}</aside>
 
       {/* Drawer (mobile) */}
       {open && (
