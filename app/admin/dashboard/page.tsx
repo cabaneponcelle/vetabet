@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, Users, DoorOpen, MessageSquare, Moon, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { loadConflicts } from "@/lib/schedule";
+import { loadConflictsCached } from "@/lib/schedule";
 import { loadGardesReprenables } from "@/lib/gardes";
 import { ConflictPanel } from "@/components/admin/conflict-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
         orderBy: { createdAt: "desc" },
         take: 6,
       }),
-      loadConflicts("DRAFT"),
+      loadConflictsCached("DRAFT"),
       loadGardesReprenables(),
     ]);
 

@@ -1,5 +1,6 @@
 // Client Prisma en singleton (évite d'épuiser les connexions en dev avec le HMR).
 import { PrismaClient } from "@prisma/client";
+import { invaliderCacheConflits } from "@/lib/cache-conflits";
 
 // Résout l'URL de la base : priorité à DATABASE_URL ; à défaut, utilise la
 // variable injectée automatiquement par Netlify DB (NETLIFY_DATABASE_URL). Pour
@@ -25,11 +26,37 @@ function resolveDbUrl(): string | undefined {
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma =
+const client =
   globalForPrisma.prisma ??
   new PrismaClient({
     datasourceUrl: resolveDbUrl(),
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
+
+const LECTURES = new Set([
+  "findFirst",
+  "findFirstOrThrow",
+  "findMany",
+  "findUnique",
+  "findUniqueOrThrow",
+  "count",
+  "aggregate",
+  "groupBy",
+]);
+
+// Toute écriture rend le cache des incohérences caduc. L'invalider ici plutôt
+// que dans chaque route : un oubli y serait silencieux et afficherait des
+// incohérences fantômes juste après une correction.
+export const prisma = client.$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ operation, args, query }) {
+        const resultat = await query(args);
+        if (!LECTURES.has(operation)) invaliderCacheConflits();
+        return resultat;
+      },
+    },
+  },
+});

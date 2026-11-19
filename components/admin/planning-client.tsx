@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Plus,
   CopyPlus,
@@ -29,6 +29,13 @@ import type { ReferenceData } from "@/lib/reference";
 import type { SerializedItem } from "@/lib/schedule";
 import type { Conflict } from "@/lib/conflicts";
 
+// Période chargée autour de la semaine regardée : une semaine avant, trois
+// après. Assez large pour que les flèches ne déclenchent presque jamais de
+// requête, assez étroite pour ne transférer qu'une fraction du planning.
+function fenetreAutour(monday: string): { from: string; to: string } {
+  return { from: addDaysStr(monday, -7), to: addDaysStr(monday, 20) };
+}
+
 function weekLabel(monday: string): string {
   const end = addDaysStr(monday, 6);
   const f = (s: string) => {
@@ -52,37 +59,56 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
   const [viewDate, setViewDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [view, setView] = useState<"jour" | "grille" | "calendrier">("jour");
   const [lastPub, setLastPub] = useState<string | null>(null);
+  const [aPublier, setAPublier] = useState(0);
   const [dupOpen, setDupOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [fenetre, setFenetre] = useState(() =>
+    fenetreAutour(mondayOf(new Date().toISOString().slice(0, 10))),
+  );
+  const dernierChargement = useRef(0);
 
   const refresh = useCallback(async () => {
-    const params = new URLSearchParams({ status: "DRAFT" });
+    // On ne charge que la fenêtre affichée : le planning complet, c'est 2000+
+    // créneaux à transférer et à parcourir pour en montrer une semaine.
+    const params = new URLSearchParams({ status: "DRAFT", from: fenetre.from, to: fenetre.to });
     if (workerId) params.set("workerId", workerId);
     if (roomId) params.set("roomId", roomId);
-    const [itemsRes, confRes, settingsRes] = await Promise.all([
+    const [itemsRes, confRes, pendingRes] = await Promise.all([
       fetch(`/api/schedule-items?${params}`),
       fetch("/api/conflicts"),
-      fetch("/api/settings"),
+      fetch("/api/schedule/pending"),
     ]);
     if (itemsRes.ok) setItems(await itemsRes.json());
     if (confRes.ok) setConflicts(await confRes.json());
-    if (settingsRes.ok) {
-      const s = await settingsRes.json();
-      setLastPub(s.derniere_publication ?? null);
+    if (pendingRes.ok) {
+      const p = await pendingRes.json();
+      setLastPub(p.derniere_publication ?? null);
+      setAPublier(p.aPublier ?? 0);
     }
-  }, [workerId, roomId]);
+    dernierChargement.current = Date.now();
+  }, [workerId, roomId, fenetre]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
+  // La fenêtre suit la navigation, mais large : passer d'une semaine à l'autre
+  // ne redemande rien tant qu'on reste dedans.
+  useEffect(() => {
+    const lundi = mondayOf(viewDate);
+    if (lundi < fenetre.from || lundi > fenetre.to) setFenetre(fenetreAutour(lundi));
+  }, [viewDate, fenetre]);
+
   // Une page laissée ouverte affichait indéfiniment l'état du moment où elle
   // avait été chargée : incohérences déjà corrigées, date de publication
-  // dépassée, bouton « Publier » grisé à tort. On recharge dès que l'onglet
-  // redevient actif.
+  // dépassée, bouton « Publier » grisé à tort. On recharge quand l'onglet
+  // redevient actif — mais pas à chaque aller-retour : un simple passage par
+  // une autre fenêtre ne justifie pas de tout redemander.
   useEffect(() => {
     function onFocus() {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - dernierChargement.current < 30_000) return;
+      refresh();
     }
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
@@ -94,7 +120,7 @@ export function PlanningClient({ reference }: { reference: ReferenceData }) {
 
   // Filtre par activité (côté client) + détection de modifications non publiées.
   const shownItems = activityId ? items.filter((i) => i.activityId === activityId) : items;
-  const hasUnpublished = items.some((i) => !lastPub || i.updatedAt > lastPub);
+  const hasUnpublished = aPublier > 0;
   const viewMonday = mondayOf(viewDate);
 
   // Colonnes de la vue « Jour » : tous les vétos actifs, ou celui du filtre.

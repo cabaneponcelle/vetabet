@@ -8,6 +8,7 @@ import {
   type RoomInfo,
 } from "@/lib/conflicts";
 import { getIgnoredConflictKeys } from "@/lib/settings";
+import { lireCacheConflits, ecrireCacheConflits } from "@/lib/cache-conflits";
 import type { ItemStatus, Prisma } from "@prisma/client";
 
 // Inclusions communes pour récupérer les libellés (travailleur, salle, activité).
@@ -92,6 +93,18 @@ export async function loadItems(filter: LoadFilter = {}): Promise<SerializedItem
     orderBy: [{ date: "asc" }, { heureDebut: "asc" }],
   });
   return items.map(serializeItem);
+}
+
+// Version mise en cache quelques secondes, pour les écrans qui redemandent la
+// liste souvent. Toute écriture en base invalide le cache (voir lib/db.ts) ;
+// la publication, elle, appelle loadConflicts() et vérifie donc toujours sur
+// des données fraîches.
+export async function loadConflictsCached(status: ItemStatus = "DRAFT"): Promise<Conflict[]> {
+  const enCache = lireCacheConflits(status);
+  if (enCache) return enCache;
+  const valeur = await loadConflicts(status);
+  ecrireCacheConflits(status, valeur);
+  return valeur;
 }
 
 // Calcule les conflits sur un périmètre de statut donné (par défaut : brouillon).

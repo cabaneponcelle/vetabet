@@ -167,6 +167,9 @@ model ScheduleItem {
 
   complaints Complaint[]
 
+  // Les écrans n'affichent qu'une période à la fois : l'index composé évite de
+  // parcourir tout le planning pour en extraire une semaine.
+  @@index([status, date])
   @@index([date])
   @@index([workerId])
   @@index([roomId])

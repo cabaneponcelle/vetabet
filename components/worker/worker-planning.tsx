@@ -21,6 +21,10 @@ function itemLabel(it: SerializedItem): string {
   }`;
 }
 
+function fenetreAutour(monday: string): { from: string; to: string } {
+  return { from: addDaysStr(monday, -7), to: addDaysStr(monday, 20) };
+}
+
 function weekLabel(monday: string): string {
   const f = (s: string) => {
     const [, m, d] = s.split("-");
@@ -50,9 +54,12 @@ export function WorkerPlanning({
     scope === "global" ? "jour" : "grille",
   );
   const [viewDate, setViewDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  // Période chargée : large autour de la semaine regardée, pour que la
+  // navigation soit instantanée sans transférer tout le planning de l'année.
+  const [fenetre, setFenetre] = useState(() => fenetreAutour(mondayOf(new Date().toISOString().slice(0, 10))));
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ from: fenetre.from, to: fenetre.to });
     if (scope === "mine") params.set("mine", "1");
     if (scope === "global") {
       if (workerId) params.set("workerId", workerId);
@@ -64,11 +71,16 @@ export function WorkerPlanning({
       setItems(j.items);
       setGlobalAutorise(j.globalAutorise);
     }
-  }, [scope, workerId, roomId]);
+  }, [scope, workerId, roomId, fenetre]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const lundi = mondayOf(viewDate);
+    if (lundi < fenetre.from || lundi > fenetre.to) setFenetre(fenetreAutour(lundi));
+  }, [viewDate, fenetre]);
 
   if (scope === "global" && !globalAutorise) {
     return (
@@ -158,11 +170,9 @@ export function WorkerPlanning({
 
       <Card>
         <CardContent>
-          {items.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Aucun créneau publié pour l&apos;instant.
-            </p>
-          ) : view === "calendrier" ? (
+          {/* Pas de court-circuit sur « aucun créneau » : seule la période
+              affichée est chargée, et il faut pouvoir naviguer vers une autre. */}
+          {view === "calendrier" ? (
             <PlanningCalendar
               items={shownItems}
               readOnly
