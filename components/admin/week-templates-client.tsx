@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, CalendarCheck, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarCheck, Copy, User, Users } from "lucide-react";
 import { WeekPicker } from "@/components/admin/week-picker";
+import { TeamWeekCoverage } from "@/components/admin/team-week-coverage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -73,6 +74,11 @@ export function WeekTemplatesClient({
   const [appliquer, setAppliquer] = useState<{ semaine?: number } | null>(null);
   const [copieOuverte, setCopieOuverte] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // « Par vétérinaire » pour construire, « Toute l'équipe » pour vérifier la
+  // couverture d'une journée : assez de monde en consultation, pas trop en
+  // chirurgie…
+  const [vue, setVue] = useState<"personne" | "equipe">("personne");
+  const [semaineEquipe, setSemaineEquipe] = useState(1);
 
   const charger = useCallback(async () => {
     if (!workerId) return;
@@ -116,14 +122,50 @@ export function WeekTemplatesClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select className="w-52" value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
+          <div className="flex overflow-hidden rounded-md border border-border">
+            <button
+              onClick={() => setVue("personne")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${vue === "personne" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+            >
+              <User className="h-4 w-4" /> Par vétérinaire
+            </button>
+            <button
+              onClick={() => setVue("equipe")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${vue === "equipe" ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+            >
+              <Users className="h-4 w-4" /> Toute l&apos;équipe
+            </button>
+          </div>
+          {vue === "equipe" && (
+            <Select
+              className="w-36"
+              value={semaineEquipe}
+              onChange={(e) => setSemaineEquipe(Number(e.target.value))}
+            >
+              {SEMAINES.map((n) => (
+                <option key={n} value={n}>
+                  Semaine S{n}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Select
+            className={`w-52 ${vue === "equipe" ? "hidden" : ""}`}
+            value={workerId}
+            onChange={(e) => setWorkerId(e.target.value)}
+          >
             {reference.workers.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.label}
               </option>
             ))}
           </Select>
-          <Button variant="outline" onClick={() => setCopieOuverte(true)} disabled={!workerId}>
+          <Button
+            variant="outline"
+            className={vue === "equipe" ? "hidden" : ""}
+            onClick={() => setCopieOuverte(true)}
+            disabled={!workerId}
+          >
             <Copy className="h-4 w-4" /> Copier une semaine
           </Button>
           <Button onClick={() => setAppliquer({})} disabled={!workerId}>
@@ -134,7 +176,15 @@ export function WeekTemplatesClient({
 
       {msg && <p className="rounded-md border border-border bg-card px-3 py-2 text-sm">{msg}</p>}
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      {vue === "equipe" && (
+        <TeamWeekCoverage
+          semaine={semaineEquipe}
+          prochainLundi={prochainsLundis[semaineEquipe]}
+          enCours={semaineCourante === semaineEquipe}
+        />
+      )}
+
+      <div className={`grid gap-3 xl:grid-cols-2 ${vue === "equipe" ? "hidden" : ""}`}>
         {SEMAINES.map((semaine) => {
           const liste = parSemaine.get(semaine) ?? [];
           return (
