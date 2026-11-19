@@ -21,6 +21,7 @@ export const SETTINGS = {
   WORKERS_VOIENT_GLOBAL: "workers_voient_planning_global",
   AVERTISSEMENTS_IGNORES: "avertissements_ignores",
   PERSONNES_EXCLUES: "personnes_exclues",
+  ROULEMENT_ANCRE: "roulement_ancre", // lundi de référence qui est un S1
 } as const;
 
 // ── Personnes retirées de la clinique ────────────────────────────────────────

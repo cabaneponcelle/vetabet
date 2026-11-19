@@ -43,6 +43,17 @@ export const roomSchema = z.object({
   actif: z.boolean().optional(),
 });
 
+// Créneau d'une semaine type : un rang de roulement (1 à 4) et un jour de la
+// semaine, sans date — c'est un modèle, pas une date du calendrier.
+export const templateSlotSchema = z.object({
+  workerId: z.string().min(1),
+  semaine: z.number().int().min(1).max(4),
+  jour: z.number().int().min(0).max(6),
+  heureDebut: z.string().regex(timeRe, "Heure de début attendue (HH:mm)"),
+  heureFin: z.string().regex(timeRe, "Heure de fin attendue (HH:mm)"),
+  activityId: z.string().nullish(),
+});
+
 export const activitySchema = z.object({
   nom: z.string().min(1, "Nom requis").max(60),
   categorie: z.string().max(60).nullish(),

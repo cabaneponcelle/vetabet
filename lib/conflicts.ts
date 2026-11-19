@@ -15,7 +15,6 @@ export type ConflictType =
   | "INCOMPLET" // salle ou travailleur manquant
   | "SALLE_DESACTIVEE" // créneau sur une salle désactivée
   | "TRAVAILLEUR_DESACTIVE" // créneau sur un travailleur désactivé
-  | "HORS_DISPO" // travailleur planifié hors de ses disponibilités
   | "SALLE_OCCUPEE" // 2 créneaux dans la même salle au même moment
   | "TRAVAILLEUR_DOUBLE" // 1 travailleur à 2 endroits au même moment
   | "SUR_CONGE"; // travailleur planifié pendant un congé approuvé
@@ -36,8 +35,6 @@ export interface WorkerInfo {
   id: string;
   nom: string;
   actif: boolean;
-  // disponibilités récurrentes ; vide = aucune contrainte de dispo
-  availabilities: { jourSemaine: number; heureDebut: string; heureFin: string }[];
 }
 
 export interface RoomInfo {
@@ -92,18 +89,6 @@ export function dayOfWeekMonday0(dateStr: string): number {
 }
 
 // Le créneau est-il entièrement contenu dans au moins une plage de dispo du jour ?
-function dansDisponibilites(item: ConflictItem, worker: WorkerInfo): boolean {
-  // Pas de dispo renseignée => on ne contraint pas (toujours « disponible »).
-  if (!worker.availabilities || worker.availabilities.length === 0) return true;
-  const jour = dayOfWeekMonday0(item.date);
-  const debut = timeToMinutes(item.heureDebut);
-  const fin = timeToMinutes(item.heureFin);
-  return worker.availabilities.some((a) => {
-    if (a.jourSemaine !== jour) return false;
-    return timeToMinutes(a.heureDebut) <= debut && timeToMinutes(a.heureFin) >= fin;
-  });
-}
-
 function plage(item: ConflictItem): string {
   return `${item.heureDebut}–${item.heureFin}`;
 }
@@ -192,19 +177,6 @@ export function detectConflicts(
       });
     }
 
-    // Hors disponibilités (avertissement)
-    if (worker && worker.actif && !dansDisponibilites(it, worker)) {
-      conflicts.push({
-        type: "HORS_DISPO",
-        severite: "AVERTISSEMENT",
-        message: `${worker.nom} est planifié(e) le ${dateFr(it.date)} de ${plage(it)}, en dehors de ses disponibilités déclarées.`,
-        date: it.date,
-        heure: plage(it),
-        travailleur: worker.nom,
-        salle: rNom,
-        itemIds: [it.id],
-      });
-    }
   }
 
   // ── 2) Contrôles par paire (même date, horaires qui se chevauchent) ────────

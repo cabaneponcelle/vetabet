@@ -100,7 +100,7 @@ export async function loadItems(filter: LoadFilter = {}): Promise<SerializedItem
 export async function loadConflicts(status: ItemStatus = "DRAFT"): Promise<Conflict[]> {
   const [items, workers, rooms, ignoredKeys] = await Promise.all([
     prisma.scheduleItem.findMany({ where: { status }, include: itemInclude }),
-    prisma.worker.findMany({ include: { user: true, availabilities: true } }),
+    prisma.worker.findMany({ include: { user: true } }),
     prisma.room.findMany(),
     getIgnoredConflictKeys(),
   ]);
@@ -121,11 +121,6 @@ export async function loadConflicts(status: ItemStatus = "DRAFT"): Promise<Confl
     id: w.id,
     nom: `${w.user.prenom} ${w.user.nom}`.trim(),
     actif: w.actif && w.user.actif,
-    availabilities: w.availabilities.map((a) => ({
-      jourSemaine: a.jourSemaine,
-      heureDebut: a.heureDebut,
-      heureFin: a.heureFin,
-    })),
   }));
 
   const ri: RoomInfo[] = rooms.map((r) => ({ id: r.id, nom: r.nom, actif: r.actif }));

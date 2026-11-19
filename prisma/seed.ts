@@ -121,19 +121,6 @@ async function main() {
       create: { userId: user.id, fonction: "Vétérinaire", actif: true },
     });
 
-    // Disponibilités par défaut larges (tous les jours, 07:00-23:00) afin de ne
-    // pas générer de faux « hors disponibilité » : la RH les affinera par véto.
-    const existing = await prisma.availability.count({ where: { workerId: worker.id } });
-    if (existing === 0) {
-      await prisma.availability.createMany({
-        data: [0, 1, 2, 3, 4, 5, 6].map((jour) => ({
-          workerId: worker.id,
-          jourSemaine: jour,
-          heureDebut: "07:00",
-          heureFin: "23:00",
-        })),
-      });
-    }
   }
 
   // ── Paramètres ──────────────────────────────────────────────────────────────

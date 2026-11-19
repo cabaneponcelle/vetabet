@@ -12,16 +12,9 @@ import {
 } from "../lib/conflicts";
 
 const workers: WorkerInfo[] = [
-  { id: "w1", nom: "Carole", actif: true, availabilities: [] },
-  { id: "w2", nom: "Florent", actif: true, availabilities: [] },
-  { id: "wOff", nom: "Lionel", actif: false, availabilities: [] },
-  {
-    id: "wDispo",
-    nom: "Sarah",
-    actif: true,
-    // disponible uniquement le lundi (0) de 09:00 à 12:00
-    availabilities: [{ jourSemaine: 0, heureDebut: "09:00", heureFin: "12:00" }],
-  },
+  { id: "w1", nom: "Carole", actif: true },
+  { id: "w2", nom: "Florent", actif: true },
+  { id: "wOff", nom: "Lionel", actif: false },
 ];
 
 const rooms: RoomInfo[] = [
@@ -93,26 +86,7 @@ describe("detectConflicts — contrôles par créneau", () => {
     expect(c.some((x) => x.type === "TRAVAILLEUR_DESACTIVE")).toBe(true);
   });
 
-  it("HORS_DISPO (avertissement) quand hors plage de dispo", () => {
-    // Sarah dispo lundi 09-12 ; on la planifie 14-15 => hors dispo
-    const c = detectConflicts(
-      [item({ workerId: "wDispo", heureDebut: "14:00", heureFin: "15:00" })],
-      workers,
-      rooms,
-    );
-    const hd = c.find((x) => x.type === "HORS_DISPO");
-    expect(hd).toBeDefined();
-    expect(hd?.severite).toBe("AVERTISSEMENT");
-  });
 
-  it("PAS de HORS_DISPO quand dans la plage", () => {
-    const c = detectConflicts(
-      [item({ workerId: "wDispo", heureDebut: "09:30", heureFin: "11:00" })],
-      workers,
-      rooms,
-    );
-    expect(c.some((x) => x.type === "HORS_DISPO")).toBe(false);
-  });
 });
 
 describe("detectConflicts — contrôles par paire", () => {
@@ -172,19 +146,15 @@ describe("hasBlocking", () => {
     expect(hasBlocking(c)).toBe(true);
   });
 
-  it("faux si uniquement des avertissements", () => {
-    const c = detectConflicts(
-      [item({ workerId: "wDispo", heureDebut: "14:00", heureFin: "15:00" })],
-      workers,
-      rooms,
-    );
+  it("faux quand le planning est sain", () => {
+    const c = detectConflicts([item({})], workers, rooms);
     expect(hasBlocking(c)).toBe(false);
   });
 });
 
 describe("conflictKey", () => {
   const base = {
-    type: "HORS_DISPO" as const,
+    type: "TRAVAILLEUR_DOUBLE" as const,
     date: "2026-07-13",
     heure: "14:00–15:00",
     itemIds: ["a", "b"],

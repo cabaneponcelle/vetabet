@@ -9,7 +9,6 @@ const TYPE_LABEL: Record<string, string> = {
   INCOMPLET: "Créneau incomplet",
   SALLE_DESACTIVEE: "Salle désactivée",
   TRAVAILLEUR_DESACTIVE: "Travailleur désactivé",
-  HORS_DISPO: "Hors disponibilité",
   SALLE_OCCUPEE: "Salle déjà occupée",
   TRAVAILLEUR_DOUBLE: "Travailleur en double",
   SUR_CONGE: "Planifié pendant un congé",

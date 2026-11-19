@@ -21,13 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
-const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-
-interface Availability {
-  jourSemaine: number;
-  heureDebut: string;
-  heureFin: string;
-}
 interface Worker {
   id: string;
   prenom: string;
@@ -37,22 +30,6 @@ interface Worker {
   telephone: string | null;
   ordre: number | null;
   actif: boolean;
-  availabilities: Availability[];
-}
-
-interface DayState {
-  enabled: boolean;
-  debut: string;
-  fin: string;
-}
-
-function emptyDays(av: Availability[] = []): DayState[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const a = av.find((x) => x.jourSemaine === i);
-    return a
-      ? { enabled: true, debut: a.heureDebut, fin: a.heureFin }
-      : { enabled: false, debut: "08:00", fin: "19:00" };
-  });
 }
 
 export function WorkersClient() {
@@ -259,7 +236,6 @@ function WorkerFormDialog({
     password: "",
     actif: worker?.actif ?? true,
   });
-  const [days, setDays] = useState<DayState[]>(emptyDays(worker?.availabilities));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -270,10 +246,7 @@ function WorkerFormDialog({
   async function save() {
     setSaving(true);
     setError(null);
-    const availabilities = days
-      .map((d, i) => (d.enabled ? { jourSemaine: i, heureDebut: d.debut, heureFin: d.fin } : null))
-      .filter(Boolean);
-    const payload: Record<string, unknown> = { ...form, availabilities };
+    const payload: Record<string, unknown> = { ...form };
     if (!payload.password) delete payload.password;
 
     const url = worker ? `/api/workers/${worker.id}` : "/api/workers";
@@ -327,41 +300,6 @@ function WorkerFormDialog({
               En tant qu&apos;admin, vous pouvez définir un nouveau mot de passe ici.
             </p>
           )}
-        </div>
-
-        <div>
-          <Label>Disponibilités hebdomadaires</Label>
-          <div className="space-y-1.5 rounded-md border border-border p-2">
-            {days.map((d, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <label className="flex w-28 items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={d.enabled}
-                    onChange={(e) =>
-                      setDays((arr) => arr.map((x, j) => (j === i ? { ...x, enabled: e.target.checked } : x)))
-                    }
-                  />
-                  {JOURS[i]}
-                </label>
-                <Input
-                  type="time"
-                  className="h-8 w-28"
-                  value={d.debut}
-                  disabled={!d.enabled}
-                  onChange={(e) => setDays((arr) => arr.map((x, j) => (j === i ? { ...x, debut: e.target.value } : x)))}
-                />
-                <span className="text-muted-foreground">→</span>
-                <Input
-                  type="time"
-                  className="h-8 w-28"
-                  value={d.fin}
-                  disabled={!d.enabled}
-                  onChange={(e) => setDays((arr) => arr.map((x, j) => (j === i ? { ...x, fin: e.target.value } : x)))}
-                />
-              </div>
-            ))}
-          </div>
         </div>
 
         <label className="flex items-center gap-2 text-sm">

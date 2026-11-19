@@ -80,6 +80,26 @@ model Worker {
   scheduleItems  ScheduleItem[]
   complaints     Complaint[]
   leaveRequests  LeaveRequest[]
+  templateSlots  TemplateSlot[]
+}
+
+// Semaine type d'un vétérinaire pour un rang du roulement (S1 à S4).
+// C'est le modèle qui se répète toutes les quatre semaines ; le planning réel
+// en est la projection sur des dates, et peut en dévier librement.
+model TemplateSlot {
+  id         String    @id @default(cuid())
+  workerId   String
+  worker     Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  semaine    Int // rang du roulement : 1 = S1 … 4 = S4
+  jour       Int // 0 = lundi … 6 = dimanche
+  heureDebut String // "HH:mm"
+  heureFin   String
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([workerId, semaine])
 }
 
 // Disponibilité récurrente hebdomadaire d'un travailleur (sert au contrôle « hors dispo »).
@@ -114,6 +134,7 @@ model Activity {
   couleur   String  @default("#3b82f6")
 
   scheduleItems ScheduleItem[]
+  templateSlots TemplateSlot[]
 }
 
 // Créneau du planning : la brique centrale.

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get("q")?.toLowerCase();
   const workers = await prisma.worker.findMany({
-    include: { user: true, availabilities: true },
+    include: { user: true },
     orderBy: ORDRE_TRAVAILLEURS,
   });
   const data = workers
@@ -27,11 +27,6 @@ export async function GET(req: NextRequest) {
       telephone: w.telephone,
       ordre: w.ordre,
       actif: w.actif && w.user.actif,
-      availabilities: w.availabilities.map((a) => ({
-        jourSemaine: a.jourSemaine,
-        heureDebut: a.heureDebut,
-        heureFin: a.heureFin,
-      })),
     }))
     .filter((w) =>
       q ? `${w.prenom} ${w.nom} ${w.email} ${w.fonction ?? ""}`.toLowerCase().includes(q) : true,
@@ -74,11 +69,8 @@ export async function POST(req: NextRequest) {
           actif: d.actif ?? true,
         },
       },
-      availabilities: d.availabilities?.length
-        ? { create: d.availabilities }
-        : undefined,
     },
-    include: { user: true, availabilities: true },
+    include: { user: true },
   });
 
   return NextResponse.json(

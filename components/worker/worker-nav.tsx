@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { CalendarDays, CalendarRange, MessageSquare, Moon, Plane, Settings, LogOut } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarRange,
+  LayoutGrid,
+  MessageSquare,
+  Moon,
+  Plane,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/worker/mon-planning", label: "Mon planning", labelCourt: "Planning", icon: CalendarDays },
+  { href: "/worker/semaines-types", label: "Mes semaines types", labelCourt: "Semaines", icon: LayoutGrid },
   { href: "/worker/planning-global", label: "Planning global", labelCourt: "Global", icon: CalendarRange },
   { href: "/worker/gardes", label: "Gardes", labelCourt: "Gardes", icon: Moon },
   { href: "/worker/conges", label: "Congés", labelCourt: "Congés", icon: Plane },

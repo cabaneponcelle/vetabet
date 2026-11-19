@@ -46,14 +46,6 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       },
     });
     // Remplace les disponibilités si fournies.
-    if (d.availabilities) {
-      await tx.availability.deleteMany({ where: { workerId: id } });
-      if (d.availabilities.length) {
-        await tx.availability.createMany({
-          data: d.availabilities.map((a) => ({ ...a, workerId: id })),
-        });
-      }
-    }
   });
 
   return NextResponse.json({ ok: true });

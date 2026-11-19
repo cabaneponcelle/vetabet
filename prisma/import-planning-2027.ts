@@ -158,15 +158,6 @@ async function main() {
       const worker = await prisma.worker.create({
         data: { userId: user.id, fonction: "Vétérinaire", actif: true },
       });
-      // Disponibilités larges, comme les comptes créés par le seed.
-      await prisma.availability.createMany({
-        data: Array.from({ length: 7 }, (_, j) => ({
-          workerId: worker.id,
-          jourSemaine: j,
-          heureDebut: "07:00",
-          heureFin: "23:00",
-        })),
-      });
       workerByName.set(norm(prenom), { ...worker, user } as never);
     } else {
       workerByName.set(norm(prenom), { id: "dry" } as never);
