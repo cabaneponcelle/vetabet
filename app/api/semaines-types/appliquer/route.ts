@@ -6,7 +6,12 @@ import { loadTemplateSlots, creneauxDepuisTemplate } from "@/lib/templates";
 import { getAncreRoulement, lundiDe, rangRoulement } from "@/lib/roulement";
 
 const schema = z.object({
-  lundis: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(26),
+  // Une année de roulement d'un coup reste raisonnable ; au-delà, mieux vaut
+  // s'y reprendre en deux fois que lancer une écriture interminable.
+  lundis: z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .min(1, "Choisissez au moins une semaine.")
+    .max(53, "Trop de semaines d'un coup : 53 au maximum (un an)."),
   workerId: z.string().min(1).optional(), // absent = toute l'équipe
   remplacer: z.boolean().optional(), // vider les semaines cibles d'abord
   // Force une semaine type précise au lieu de suivre le roulement : utile pour
@@ -23,7 +28,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return badRequest("Données invalides", parsed.error.flatten());
+  if (!parsed.success) {
+    // « Données invalides » tout court ne dit pas quoi corriger : on remonte le
+    // premier motif, qui est celui que la RH peut traiter.
+    const motif = parsed.error.issues[0]?.message;
+    return badRequest(motif || "Données invalides", parsed.error.flatten());
+  }
   const { workerId, remplacer, semaine: semaineImposee } = parsed.data;
 
   const [slots, ancre] = await Promise.all([loadTemplateSlots(workerId), getAncreRoulement()]);

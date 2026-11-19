@@ -10,7 +10,10 @@ const schema = z.object({
   sourceMonday: z.string().regex(dateRe),
   // Semaines cibles choisies dans le calendrier (une date par semaine ; elle est
   // ramenée au lundi côté serveur).
-  targetMondays: z.array(z.string().regex(dateRe)).min(1).max(26),
+  targetMondays: z
+    .array(z.string().regex(dateRe))
+    .min(1, "Choisissez au moins une semaine.")
+    .max(53, "Trop de semaines d'un coup : 53 au maximum (un an)."),
   replace: z.boolean().optional(), // remplacer les créneaux existants DE CETTE PERSONNE
 });
 
@@ -34,7 +37,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return badRequest("Données invalides", parsed.error.flatten());
+  if (!parsed.success) {
+    const motif = parsed.error.issues[0]?.message;
+    return badRequest(motif || "Données invalides", parsed.error.flatten());
+  }
   const { workerId, sourceMonday, targetMondays, replace } = parsed.data;
 
   const worker = await prisma.worker.findUnique({ where: { id: workerId } });
