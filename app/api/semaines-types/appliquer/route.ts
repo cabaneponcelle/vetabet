@@ -9,6 +9,9 @@ const schema = z.object({
   lundis: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(26),
   workerId: z.string().min(1).optional(), // absent = toute l'équipe
   remplacer: z.boolean().optional(), // vider les semaines cibles d'abord
+  // Force une semaine type précise au lieu de suivre le roulement : utile pour
+  // poser un S2 sur une semaine qui serait un S3 (remplacement, échange…).
+  semaine: z.number().int().min(1).max(4).optional(),
 });
 
 // POST /api/semaines-types/appliquer — projette les semaines types sur de
@@ -21,11 +24,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) return badRequest("Données invalides", parsed.error.flatten());
-  const { workerId, remplacer } = parsed.data;
+  const { workerId, remplacer, semaine: semaineImposee } = parsed.data;
 
   const [slots, ancre] = await Promise.all([loadTemplateSlots(workerId), getAncreRoulement()]);
   if (slots.length === 0) {
     return badRequest("Aucune semaine type enregistrée pour cette sélection.");
+  }
+  if (semaineImposee && !slots.some((s) => s.semaine === semaineImposee)) {
+    return badRequest(`La semaine type S${semaineImposee} est vide pour cette sélection.`);
   }
 
   const lundis = [...new Set(parsed.data.lundis.map(lundiDe))].sort();
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
   const detail: { lundi: string; rang: number; crees: number }[] = [];
 
   for (const lundi of lundis) {
-    const rang = rangRoulement(lundi, ancre);
+    const rang = semaineImposee ?? rangRoulement(lundi, ancre);
     const [y, m, d] = lundi.split("-").map(Number);
     const debut = new Date(Date.UTC(y, m - 1, d));
     const fin = new Date(Date.UTC(y, m - 1, d) + 6 * 86_400_000);

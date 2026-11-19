@@ -59,7 +59,8 @@ export function WeekTemplatesClient({
   const [dialog, setDialog] = useState<{ slot: Slot | null; semaine: number; jour: number } | null>(
     null,
   );
-  const [appliquerOuvert, setAppliquerOuvert] = useState(false);
+  // `semaine` fixe la semaine type à poser ; absent = suivre le roulement.
+  const [appliquer, setAppliquer] = useState<{ semaine?: number } | null>(null);
   const [copieOuverte, setCopieOuverte] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -114,7 +115,7 @@ export function WeekTemplatesClient({
           <Button variant="outline" onClick={() => setCopieOuverte(true)} disabled={!workerId}>
             <Copy className="h-4 w-4" /> Copier une semaine
           </Button>
-          <Button onClick={() => setAppliquerOuvert(true)} disabled={!workerId}>
+          <Button onClick={() => setAppliquer({})} disabled={!workerId}>
             <CalendarCheck className="h-4 w-4" /> Appliquer au planning
           </Button>
         </div>
@@ -133,9 +134,20 @@ export function WeekTemplatesClient({
                     <h2 className="font-semibold">Semaine S{semaine}</h2>
                     {semaineCourante === semaine && <Badge variant="success">en cours</Badge>}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {liste.length} créneau{liste.length > 1 ? "x" : ""} · {heuresDe(liste)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {liste.length} créneau{liste.length > 1 ? "x" : ""} · {heuresDe(liste)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={`Poser cette semaine type sur une semaine précise`}
+                      disabled={liste.length === 0}
+                      onClick={() => setAppliquer({ semaine })}
+                    >
+                      <CalendarCheck className="h-4 w-4" /> Appliquer S{semaine}
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-border rounded-md border border-border">
@@ -201,13 +213,14 @@ export function WeekTemplatesClient({
         />
       )}
 
-      {appliquerOuvert && (
+      {appliquer && (
         <AppliquerDialog
           workerId={workerId}
           nomVeto={nomVeto}
-          onClose={() => setAppliquerOuvert(false)}
+          semaineImposee={appliquer.semaine}
+          onClose={() => setAppliquer(null)}
           onDone={(texte) => {
-            setAppliquerOuvert(false);
+            setAppliquer(null);
             setMsg(texte);
           }}
         />
@@ -362,15 +375,19 @@ function SlotDialog({
 function AppliquerDialog({
   workerId,
   nomVeto,
+  semaineImposee,
   onClose,
   onDone,
 }: {
   workerId: string;
   nomVeto: string;
+  semaineImposee?: number;
   onClose: () => void;
   onDone: (msg: string) => void;
 }) {
   const [cibles, setCibles] = useState<string[]>([]);
+  // 0 = suivre le roulement ; 1 à 4 = poser cette semaine type coûte que coûte.
+  const [semaine, setSemaine] = useState<number>(semaineImposee ?? 0);
   const [remplacer, setRemplacer] = useState(true);
   const [toutLeMonde, setToutLeMonde] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -385,6 +402,7 @@ function AppliquerDialog({
       body: JSON.stringify({
         lundis: cibles,
         remplacer,
+        ...(semaine ? { semaine } : {}),
         ...(toutLeMonde ? {} : { workerId }),
       }),
     });
@@ -405,12 +423,29 @@ function AppliquerDialog({
   }
 
   return (
-    <Dialog open onClose={onClose} title="Appliquer les semaines types au planning">
+    <Dialog
+      open
+      onClose={onClose}
+      title={semaineImposee ? `Appliquer la semaine type S${semaineImposee}` : "Appliquer les semaines types au planning"}
+    >
       <div className="space-y-3 text-sm">
-        <p className="text-muted-foreground">
-          Choisissez les semaines à remplir. Le rang du roulement (S1 à S4) de chaque semaine est
-          déduit du calendrier de la clinique : c&apos;est la bonne semaine type qui est posée.
-        </p>
+        <div>
+          <Label>Semaine type à poser</Label>
+          <Select value={semaine} onChange={(e) => setSemaine(Number(e.target.value))}>
+            <option value={0}>Celle du roulement (S1 à S4 selon la date)</option>
+            {SEMAINES.map((s) => (
+              <option key={s} value={s}>
+                S{s} — quelle que soit la date
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {semaine
+              ? `La semaine type S${semaine} sera posée sur chaque semaine cochée, même si le roulement en prévoyait une autre.`
+              : "Chaque semaine cochée reçoit la semaine type correspondant à son rang dans le roulement."}
+          </p>
+        </div>
+        <p className="text-muted-foreground">Choisissez la ou les semaines à remplir :</p>
         <WeekPicker
           selected={cibles}
           onToggle={(m) =>
