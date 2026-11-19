@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSession, requireAdminApi, badRequest } from "@/lib/api";
 import { templateSlotSchema } from "@/lib/validation";
 import { loadTemplateSlots, serializeTemplateSlot } from "@/lib/templates";
-import { getAncreRoulement, rangRoulement } from "@/lib/roulement";
+import { getAncreRoulement, rangRoulement, prochainLundiDuRang } from "@/lib/roulement";
 
 // GET /api/semaines-types?workerId=… — les semaines types.
 // La RH voit tout le monde ; un vétérinaire ne voit que les siennes.
@@ -18,10 +18,19 @@ export async function GET(req: NextRequest) {
   const [slots, ancre] = await Promise.all([loadTemplateSlots(workerId), getAncreRoulement()]);
   const aujourdhui = new Date().toISOString().slice(0, 10);
 
+  // Les cartes S1 à S4 sont abstraites : on joint le lundi de la prochaine
+  // occurrence de chaque rang, pour qu'on sache de quelles vraies dates on
+  // parle (le calcul a besoin de l'ancre du roulement, côté serveur).
+  const prochainsLundis: Record<number, string> = {};
+  for (const rang of [1, 2, 3, 4]) {
+    prochainsLundis[rang] = prochainLundiDuRang(rang, aujourdhui, ancre);
+  }
+
   return NextResponse.json({
     slots,
     ancre,
     semaineCourante: rangRoulement(aujourdhui, ancre),
+    prochainsLundis,
   });
 }
 

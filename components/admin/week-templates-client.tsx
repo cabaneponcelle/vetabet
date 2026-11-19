@@ -34,6 +34,15 @@ function minutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
 }
+// "2026-11-30" -> "30/11 → 06/12" : la semaine réelle que représente la carte.
+function semaineDu(lundi?: string): string {
+  if (!lundi) return "";
+  const [y, m, d] = lundi.split("-").map(Number);
+  const fin = new Date(Date.UTC(y, m - 1, d) + 6 * 86_400_000).toISOString().slice(0, 10);
+  const jj = (s: string) => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
+  return `${jj(lundi)} → ${jj(fin)}`;
+}
+
 function heuresDe(slots: Slot[]): string {
   const total = slots.reduce((n, s) => n + minutes(s.heureFin) - minutes(s.heureDebut), 0);
   const h = Math.floor(total / 60);
@@ -56,6 +65,7 @@ export function WeekTemplatesClient({
   const [workerId, setWorkerId] = useState(initialWorkerId ?? reference.workers[0]?.id ?? "");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [semaineCourante, setSemaineCourante] = useState<number | null>(null);
+  const [prochainsLundis, setProchainsLundis] = useState<Record<number, string>>({});
   const [dialog, setDialog] = useState<{ slot: Slot | null; semaine: number; jour: number } | null>(
     null,
   );
@@ -71,6 +81,7 @@ export function WeekTemplatesClient({
     const j = await res.json();
     setSlots(j.slots);
     setSemaineCourante(j.semaineCourante);
+    setProchainsLundis(j.prochainsLundis ?? {});
   }, [workerId]);
 
   useEffect(() => {
@@ -133,6 +144,10 @@ export function WeekTemplatesClient({
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold">Semaine S{semaine}</h2>
                     {semaineCourante === semaine && <Badge variant="success">en cours</Badge>}
+                    <span className="text-xs text-muted-foreground">
+                      {semaineCourante === semaine ? "" : "prochaine : "}
+                      {semaineDu(prochainsLundis[semaine])}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
